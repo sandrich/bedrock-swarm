@@ -1,4 +1,4 @@
-name: Release
+name: Release and Publish
 
 on:
   push:
@@ -7,6 +7,12 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    
+    # Add permissions needed for OIDC
+    permissions:
+      id-token: write  # Required for OIDC
+      contents: write  # Required for gh-pages
+    
     steps:
     - uses: actions/checkout@v4
       with:
@@ -28,11 +34,12 @@ jobs:
         python -m build
         
     - name: Publish to Test PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-      run: |
-        twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        skip-existing: true
+        verbose: true
+        print-hash: true  # Print package hash for verification
         
     - name: Build documentation
       run: |
