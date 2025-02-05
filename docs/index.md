@@ -14,30 +14,22 @@ Bedrock Swarm is a powerful framework for building multi-agent systems using AWS
 ## Quick Start
 
 ```python
-from bedrock_swarm import BedrockAgent, Agency
-from bedrock_swarm.config import AWSConfig
+from bedrock_swarm import Agent
 
-# Configure AWS
-config = AWSConfig(region="us-west-2")
+async def main():
+    # Create an agent
+    agent = Agent(
+        name="assistant",
+        model_id="anthropic.claude-v2"
+    )
+    
+    # Have a conversation
+    response = await agent.run("Hello! Can you help me with a task?")
+    print(response)
 
-# Create agents
-analyst = BedrockAgent(
-    name="analyst",
-    model_id="anthropic.claude-v2",
-    aws_config=config
-)
-
-researcher = BedrockAgent(
-    name="researcher",
-    model_id="anthropic.claude-v2",
-    aws_config=config
-)
-
-# Create agency
-agency = Agency([analyst, researcher])
-
-# Execute tasks
-result = await agency.execute("Analyze this dataset and prepare a report")
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
 ```
 
 ## Installation
@@ -65,4 +57,15 @@ pip install bedrock-swarm[docs]
 - Check out the [Quick Start Guide](getting-started/quickstart.md) for a more detailed introduction
 - Learn about the core concepts in the [User Guide](user-guide/core-concepts.md)
 - Browse the [API Reference](api/agents.md) for detailed documentation
-- See [Examples](examples/basic.md) for practical use cases 
+- See [Examples](examples/basic.md) for practical use cases
+
+## Documentation
+
+- [Getting Started](getting-started/installation.md)
+- [User Guide](user-guide/core-concepts.md)
+- [API Reference](api/agents.md)
+- [Examples](examples/basic.md)
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](contributing.md) for details. 

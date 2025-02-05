@@ -1,9 +1,11 @@
 # Installation
 
+This guide will help you get started with Bedrock Swarm.
+
 ## Requirements
 
-- Python 3.9 or higher
-- AWS account with Bedrock access
+- Python 3.9 or later
+- AWS account with access to Bedrock
 - AWS credentials configured
 
 ## Installation Methods
@@ -31,49 +33,57 @@ pip install -e ".[dev,docs]"
 
 ## AWS Configuration
 
-1. Configure your AWS credentials:
+Before using Bedrock Swarm, you need to configure your AWS credentials. There are several ways to do this:
+
+### Environment Variables
+
+```bash
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_DEFAULT_REGION=your_region
+```
+
+### AWS CLI Configuration
+
+If you have the AWS CLI installed:
 
 ```bash
 aws configure
 ```
 
-Or set environment variables:
+### Using Configuration File
 
-```bash
-export AWS_ACCESS_KEY_ID=your_access_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_REGION=us-west-2
+Create a `.env` file in your project root:
+
+```plaintext
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_DEFAULT_REGION=your_region
 ```
 
-2. Ensure you have access to AWS Bedrock and the required models:
-   - Anthropic Claude (recommended)
-   - Amazon Titan
-   - AI21 Jurassic
-   - Cohere Command
+## Verify Installation
 
-## Verifying Installation
+You can verify your installation by running a simple test:
 
 ```python
-from bedrock_swarm import BedrockAgent
-from bedrock_swarm.config import AWSConfig
+from bedrock_swarm import Agent
 
-# Create a config
-config = AWSConfig(region="us-west-2")
+async def main():
+    agent = Agent(
+        name="test_agent",
+        model_id="anthropic.claude-v2"
+    )
+    
+    response = await agent.run("Hello! Are you working correctly?")
+    print(response)
 
-# Create an agent
-agent = BedrockAgent(
-    name="test_agent",
-    model_id="anthropic.claude-v2",
-    aws_config=config
-)
-
-# Test the agent
-response = await agent.process_message("Hello!")
-print(response)
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
 ```
 
 ## Next Steps
 
-- Follow the [Quick Start Guide](quickstart.md) to create your first agent
+- Follow our [Quick Start Guide](quickstart.md) to create your first agent
 - Learn about [Core Concepts](../user-guide/core-concepts.md)
-- Check out the [Examples](../examples/basic.md) 
+- Check out the [Basic Examples](../examples/basic.md) 

@@ -130,7 +130,7 @@ class BedrockAgent:
         """
         return list(self._tools.values())
     
-    def add_tool(self, tool: Union[BaseTool, str], **kwargs) -> BaseTool:
+    def add_tool(self, tool: Union[BaseTool, str], **kwargs: Any) -> BaseTool:
         """Add a tool to the agent.
         
         Args:

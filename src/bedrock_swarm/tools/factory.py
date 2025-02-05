@@ -1,5 +1,5 @@
 """Tool factory for creating and managing tools."""
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, Any
 
 from .base import BaseTool
 from .web import WebSearchTool
@@ -31,7 +31,7 @@ class ToolFactory:
         cls._tool_types[tool_name] = tool_type
     
     @classmethod
-    def create_tool(cls, tool_type_name: str, **kwargs) -> BaseTool:
+    def create_tool(cls, tool_type_name: str, **kwargs: Any) -> BaseTool:
         """Create a tool instance.
         
         Args:

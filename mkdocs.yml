@@ -40,6 +40,13 @@ plugins:
             show_root_heading: true
             show_category_heading: true
             show_submodules: true
+            docstring_style: google
+            docstring_section_style: spacy
+            merge_init_into_class: true
+            show_if_no_docstring: false
+            show_signature_annotations: false
+            extra:
+              show_warnings: false
 
 markdown_extensions:
   - admonition
