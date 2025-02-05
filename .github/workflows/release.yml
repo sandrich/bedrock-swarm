@@ -39,12 +39,6 @@ jobs:
         verbose: true
         print-hash: true  # Print package hash for verification
         
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./site
-        
     - name: Trigger ReadTheDocs build
       uses: dfm/rtds-action@v1
       with:
