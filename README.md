@@ -3,9 +3,9 @@
 [![PyPI version](https://badge.fury.io/py/bedrock-swarm.svg)](https://badge.fury.io/py/bedrock-swarm)
 [![Python](https://img.shields.io/pypi/pyversions/bedrock-swarm.svg)](https://pypi.org/project/bedrock-swarm/)
 [![Documentation Status](https://readthedocs.org/projects/bedrock-swarm/badge/?version=latest)](https://bedrock-swarm.readthedocs.io/en/latest/?badge=latest)
+[![Tests](https://github.com/sandrich/bedrock-swarm/actions/workflows/tests.yml/badge.svg)](https://github.com/sandrich/bedrock-swarm/actions/workflows/tests.yml)
+[![Coverage](https://codecov.io/gh/sandrich/bedrock-swarm/branch/main/graph/badge.svg)](https://codecov.io/gh/sandrich/bedrock-swarm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://github.com/yourusername/bedrock-swarm/actions/workflows/tests.yml/badge.svg)](https://github.com/yourusername/bedrock-swarm/actions/workflows/tests.yml)
-[![Coverage](https://codecov.io/gh/yourusername/bedrock-swarm/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/bedrock-swarm)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A powerful framework for building multi-agent systems using AWS Bedrock. Create, manage, and orchestrate AI agents powered by state-of-the-art language models.
@@ -87,7 +87,6 @@ pip install "bedrock-swarm[dev]"
 ```bash
 export AWS_REGION=us-west-2
 export AWS_PROFILE=default
-export SEARCH_API_KEY=your-search-api-key
 ```
 
 3. Run an example:
@@ -109,7 +108,7 @@ For comprehensive documentation, visit [bedrock-swarm.readthedocs.io](https://be
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/bedrock-swarm.git
+git clone https://github.com/sandrich/bedrock-swarm.git
 cd bedrock-swarm
 ```
 
@@ -149,5 +148,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📬 Contact
 
-- GitHub Issues: [github.com/yourusername/bedrock-swarm/issues](https://github.com/yourusername/bedrock-swarm/issues)
+- GitHub Issues: [github.com/sandrich/bedrock-swarm/issues](https://github.com/sandrich/bedrock-swarm/issues)
 - Documentation: [bedrock-swarm.readthedocs.io](https://bedrock-swarm.readthedocs.io)
