@@ -1,76 +1,98 @@
-from typing import Any, Dict
+"""Web search tool."""
+
+from typing import Any, Dict, List
+
 from duckduckgo_search import DDGS
 
 from .base import BaseTool
 
+
 class WebSearchTool(BaseTool):
-    """Tool for performing web searches using DuckDuckGo.
-    
-    This tool uses the DuckDuckGo API to perform searches,
-    providing reliable and efficient access to web search results.
-    """
-    
-    def __init__(self):
-        self._ddgs = DDGS()
-    
+    """Tool for performing web searches using DuckDuckGo."""
+
+    def __init__(
+        self,
+        name: str = "web_search",
+        description: str = "Search the web for information",
+    ) -> None:
+        """Initialize the web search tool."""
+        super().__init__(name=name, description=description)
+        self.ddgs = DDGS()
+
     @property
     def name(self) -> str:
+        """Get tool name."""
         return "web_search"
-    
+
     @property
     def description(self) -> str:
-        return "Search the web for information on a given query using DuckDuckGo"
-    
+        """Get tool description."""
+        return "Search the web for information using DuckDuckGo"
+
     def get_schema(self) -> Dict[str, Any]:
+        """Get JSON schema for the tool.
+
+        Returns:
+            Dict[str, Any]: Tool schema
+        """
         return {
             "name": self.name,
             "description": self.description,
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query"
-                    },
+                    "query": {"type": "string", "description": "Search query"},
                     "num_results": {
                         "type": "integer",
                         "description": "Number of results to return",
-                        "default": 5
-                    }
+                        "default": 5,
+                        "minimum": 1,
+                        "maximum": 10,
+                    },
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         }
-    
-    async def execute(self, query: str, num_results: int = 5) -> str:
-        """Execute web search using DuckDuckGo.
-        
+
+    def _execute_impl(self, **kwargs: Any) -> str:
+        """Execute the web search.
+
         Args:
-            query (str): Search query
-            num_results (int): Number of results to return
-            
+            **kwargs: Tool parameters
+
         Returns:
-            str: Search results formatted as a string
+            str: Search results
         """
+        query = kwargs["query"]
+        num_results = kwargs.get("num_results", 5)
+
         try:
-            # Perform the search
-            results = list(self._ddgs.text(
-                query,
-                max_results=num_results
-            ))
-            
-            if not results:
-                return "No results found"
-            
-            # Format results
-            formatted_results = []
-            for i, result in enumerate(results, 1):
-                title = result.get('title', 'No title')
-                link = result.get('link', 'No link')
-                snippet = result.get('body', 'No description available')
-                formatted_results.append(f"{i}. {title}\n   {link}\n   {snippet}\n")
-            
-            return "\n".join(formatted_results)
-            
+            results = list(self.ddgs.text(query, max_results=num_results))
+            return self._format_results(results)
         except Exception as e:
-            return f"Error during search: {str(e)}" 
+            return f"Error during search: {str(e)}"
+
+    def _format_results(self, results: List[Dict[str, str]]) -> str:
+        """Format search results.
+
+        Args:
+            results: List of search results
+
+        Returns:
+            str: Formatted results
+        """
+        if not results:
+            return "No results found"
+
+        formatted = []
+        for result in results:
+            title = result.get("title", "No title")
+            link = result.get("link", "No link")
+            body = result.get("body", "No description available")
+
+            formatted.append(f"Title: {title}")
+            formatted.append(f"Link: {link}")
+            formatted.append(f"Description: {body}")
+            formatted.append("")
+
+        return "\n".join(formatted)
