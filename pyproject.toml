@@ -19,7 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: 3.11",
+    "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
     "boto3>=1.28.0",
@@ -54,6 +54,8 @@ package-dir = {"" = "src"}
 
 [tool.setuptools_scm]
 write_to = "src/bedrock_swarm/_version.py"
+version_scheme = "post-release"
+local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
