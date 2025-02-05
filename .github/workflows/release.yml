@@ -38,10 +38,3 @@ jobs:
         skip-existing: true
         verbose: true
         print-hash: true  # Print package hash for verification
-        
-    - name: Trigger ReadTheDocs build
-      uses: dfm/rtds-action@v1
-      with:
-        webhook_url: ${{ secrets.RTDS_WEBHOOK_URL }}
-        webhook_token: ${{ secrets.RTDS_WEBHOOK_TOKEN }}
-        commit_ref: ${{ github.ref }} 
