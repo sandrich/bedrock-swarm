@@ -15,21 +15,25 @@ def aws_config():
 
 @pytest.fixture
 def mock_bedrock_client():
-    with patch("boto3.client") as mock_client:
-        mock = Mock()
-        mock_client.return_value = mock
-        yield mock
+    mock = Mock()
+    return mock
 
 @pytest.fixture
 def mock_agent(aws_config, mock_bedrock_client):
-    agent = BedrockAgent(
-        name="test_agent",
-        model_id="anthropic.claude-v2",
-        aws_config=aws_config,
-        instructions="You are a helpful AI assistant."
-    )
-    agent.process_message = AsyncMock(return_value="Test response")
-    return agent
+    with patch("boto3.Session") as mock_session:
+        # Create a mock session that returns our mock client
+        session = Mock()
+        session.client.return_value = mock_bedrock_client
+        mock_session.return_value = session
+        
+        agent = BedrockAgent(
+            name="test_agent",
+            model_id="anthropic.claude-v2",
+            aws_config=aws_config,
+            instructions="You are a helpful AI assistant."
+        )
+        agent.process_message = AsyncMock(return_value="Test response")
+        return agent
 
 @pytest.fixture
 def swarm():
