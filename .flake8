@@ -1,0 +1,12 @@
+[flake8]
+# E203: Whitespace before ':' - Black handles this
+# E266: Too many leading '#' for block comment
+# E501: Line too long - Black handles this
+# W503: Line break before binary operator - Black handles this
+# E402: Module level import not at top of file
+ignore = E203, E266, E501, W503, E402
+max-line-length = 88
+exclude = .git,__pycache__,build,dist
+per-file-ignores =
+    # F401: Module imported but unused
+    __init__.py: F401 
