@@ -1,7 +1,7 @@
 # 🤖 Bedrock Swarm
 
 [![PyPI version](https://badge.fury.io/py/bedrock-swarm.svg)](https://badge.fury.io/py/bedrock-swarm)
-[![Python](https://img.shields.io/pypi/pyversions/bedrock-swarm.svg)](https://pypi.org/project/bedrock-swarm/)
+[![Python](https://img.shields.io/pypi/pyversions/bedrock-swarm.svg)](https://pypi.org/project/bedrock-swarm)
 [![Documentation Status](https://readthedocs.org/projects/bedrock-swarm/badge/?version=latest)](https://bedrock-swarm.readthedocs.io/en/latest/?badge=latest)
 [![Tests](https://github.com/sandrich/bedrock-swarm/actions/workflows/tests.yml/badge.svg)](https://github.com/sandrich/bedrock-swarm/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/sandrich/bedrock-swarm/branch/main/graph/badge.svg)](https://codecov.io/gh/sandrich/bedrock-swarm)
@@ -16,7 +16,6 @@ A powerful framework for building multi-agent systems using AWS Bedrock. Create,
 - 🤝 **Multi-Agent Support** - Build complex systems with multiple cooperating agents
 - 🔧 **Extensible Tools** - Add custom capabilities to your agents
 - 💾 **Memory Management** - Built-in conversation memory for persistent context
-- ⚡ **Async Support** - Handle concurrent operations efficiently
 - 🔒 **Type Safety** - Full type hints and runtime type checking
 - 📚 **Comprehensive Documentation** - Detailed guides and API reference
 
@@ -27,44 +26,39 @@ A powerful framework for building multi-agent systems using AWS Bedrock. Create,
 pip install bedrock-swarm
 
 # With development dependencies
-pip install bedrock-swarm[dev]
+pip install "bedrock-swarm[dev]"
 
 # With documentation dependencies
-pip install bedrock-swarm[docs]
+pip install "bedrock-swarm[docs]"
 ```
 
 ## 🚀 Quick Start
 
 ```python
-from bedrock_swarm import BedrockAgent, Agency
+from bedrock_swarm import BedrockAgent
 from bedrock_swarm.config import AWSConfig
 
-# Configure AWS
-config = AWSConfig(region="us-west-2")
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
+    )
 
-# Create agents
-analyst = BedrockAgent(
-    name="analyst",
-    model_id="anthropic.claude-v2",
-    aws_config=config,
-    instructions="You are a data analyst specialized in market research."
-)
+    # Create an agent
+    agent = BedrockAgent(
+        name="assistant",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_config=config,
+        instructions="You are a helpful AI assistant."
+    )
 
-researcher = BedrockAgent(
-    name="researcher",
-    model_id="anthropic.claude-v2",
-    aws_config=config,
-    instructions="You are a researcher focused on gathering accurate information."
-)
+    # Process a message
+    response = agent.process_message("Hello! What can you help me with?")
+    print(response)
 
-# Add tools to agents
-analyst.add_tool("WebSearchTool", api_key="your-api-key")
-
-# Create agency
-agency = Agency([analyst, researcher])
-
-# Execute tasks
-result = await agency.execute("Analyze recent market trends in AI and prepare a report")
+if __name__ == "__main__":
+    main()
 ```
 
 ## 🎯 Examples
@@ -93,16 +87,6 @@ export AWS_PROFILE=default
 ```bash
 python examples/simple_analysis.py
 ```
-
-## 📖 Documentation
-
-For comprehensive documentation, visit [bedrock-swarm.readthedocs.io](https://bedrock-swarm.readthedocs.io/):
-
-- [Installation Guide](https://bedrock-swarm.readthedocs.io/en/latest/getting-started/installation/)
-- [Quick Start Guide](https://bedrock-swarm.readthedocs.io/en/latest/getting-started/quickstart/)
-- [Core Concepts](https://bedrock-swarm.readthedocs.io/en/latest/user-guide/core-concepts/)
-- [API Reference](https://bedrock-swarm.readthedocs.io/en/latest/api/agents/)
-- [Examples](https://bedrock-swarm.readthedocs.io/en/latest/examples/basic/)
 
 ## 🧪 Development
 
@@ -133,6 +117,16 @@ pytest
 mkdocs serve
 ```
 
+## 📖 Documentation
+
+Visit our [documentation](https://bedrock-swarm.readthedocs.io/) for:
+
+- [Installation Guide](https://bedrock-swarm.readthedocs.io/en/latest/getting-started/installation/)
+- [Quick Start Guide](https://bedrock-swarm.readthedocs.io/en/latest/getting-started/quickstart/)
+- [Core Concepts](https://bedrock-swarm.readthedocs.io/en/latest/user-guide/core-concepts/)
+- [API Reference](https://bedrock-swarm.readthedocs.io/en/latest/api/agents/)
+- [Examples](https://bedrock-swarm.readthedocs.io/en/latest/examples/basic/)
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
@@ -144,9 +138,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - AWS Bedrock team for providing the foundation models
+- [Agency Swarm](https://github.com/VRSEN/agency-swarm) project for inspiration on multi-agent architecture and design patterns
 - The open-source community for inspiration and tools
 
 ## 📬 Contact
 
 - GitHub Issues: [github.com/sandrich/bedrock-swarm/issues](https://github.com/sandrich/bedrock-swarm/issues)
 - Documentation: [bedrock-swarm.readthedocs.io](https://bedrock-swarm.readthedocs.io)
+
+## Logging
+
+Bedrock Swarm includes built-in logging capabilities to help you monitor and debug your applications. By default, logging is set to WARNING level.
+
+```python
+from bedrock_swarm import configure_logging
+
+# Enable debug logging
+configure_logging(level="DEBUG")
+```
+
+For detailed information about logging configuration and best practices, see the [Logging Guide](docs/user-guide/logging.md).
