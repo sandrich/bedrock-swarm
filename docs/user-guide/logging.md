@@ -99,7 +99,7 @@ def main():
 
         # Change log level if needed
         set_log_level("INFO")
-        
+
         response = agent.process_message("Another message")
         print(response)
 
@@ -145,4 +145,4 @@ The framework uses logging internally to provide information about:
 - Memory operations
 - Error conditions
 
-These logs can be controlled using the same configuration methods. 
+These logs can be controlled using the same configuration methods.
