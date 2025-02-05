@@ -1,110 +1,165 @@
-# Working with Tools
+# Tools Guide
 
-Tools allow agents to interact with external systems and perform specific actions.
+Tools extend agents' capabilities by allowing them to perform specific actions.
 
 ## Built-in Tools
 
-Bedrock Swarm comes with several built-in tools:
+### WebSearchTool
 
-### Web Search
-
-```python
-from bedrock_swarm.tools import WebSearch
-
-agent = Agent(
-    tools=[WebSearch()]
-)
-```
-
-### File Operations
+Performs web searches using DuckDuckGo:
 
 ```python
-from bedrock_swarm.tools import FileReader, FileWriter
+from bedrock_swarm.tools.web import WebSearchTool
 
-agent = Agent(
-    tools=[
-        FileReader(),
-        FileWriter()
-    ]
-)
+# Create and configure the tool
+search_tool = WebSearchTool()
+
+# Add to an agent
+agent.add_tool(search_tool)
 ```
 
 ## Creating Custom Tools
 
-You can create your own tools by subclassing the `Tool` class:
+Create custom tools by extending `BaseTool`:
 
 ```python
-from bedrock_swarm import Tool
+from bedrock_swarm.tools.base import BaseTool
+from typing import Dict, Any
 
-class Calculator(Tool):
-    name = "calculator"
-    description = "Performs basic arithmetic operations"
-    
-    async def run(self, operation: str, x: float, y: float) -> float:
+class Calculator(BaseTool):
+    @property
+    def name(self) -> str:
+        return "calculator"
+
+    @property
+    def description(self) -> str:
+        return "Performs basic arithmetic operations"
+
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number", "description": "First number"},
+                    "y": {"type": "number", "description": "Second number"},
+                    "operation": {
+                        "type": "string",
+                        "description": "Operation to perform",
+                        "enum": ["add", "subtract", "multiply", "divide"]
+                    }
+                },
+                "required": ["x", "y", "operation"]
+            }
+        }
+
+    def _execute_impl(self, **kwargs) -> str:
+        x = kwargs["x"]
+        y = kwargs["y"]
+        operation = kwargs["operation"]
+
         if operation == "add":
-            return x + y
+            result = x + y
+        elif operation == "subtract":
+            result = x - y
         elif operation == "multiply":
-            return x * y
-        # ... other operations
-```
+            result = x * y
+        elif operation == "divide":
+            if y == 0:
+                return "Error: Division by zero"
+            result = x / y
 
-## Tool Parameters
+        return f"{x} {operation} {y} = {result}"
 
-Tools can specify their parameters using type hints:
+# File operations tool example
+class FileWriter(BaseTool):
+    @property
+    def name(self) -> str:
+        return "file_writer"
 
-```python
-from typing import List, Optional
+    @property
+    def description(self) -> str:
+        return "Writes content to a file"
 
-class DataAnalyzer(Tool):
-    name = "data_analyzer"
-    description = "Analyzes numerical data"
-    
-    async def run(
-        self,
-        data: List[float],
-        operation: str = "mean",
-        confidence: Optional[float] = None
-    ) -> float:
-        # Implementation
-        pass
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "File path"},
+                    "content": {"type": "string", "description": "Content to write"}
+                },
+                "required": ["path", "content"]
+            }
+        }
+
+    def _execute_impl(self, path: str, content: str) -> str:
+        try:
+            with open(path, "w") as f:
+                f.write(content)
+            return f"Successfully wrote to {path}"
+        except Exception as e:
+            return f"Error writing to file: {str(e)}"
 ```
 
 ## Tool Validation
 
-Implement validation in your tools:
+Tools include built-in parameter validation:
 
 ```python
-class SafeFileWriter(Tool):
-    async def run(self, path: str, content: str) -> bool:
-        if not path.endswith('.txt'):
-            raise ValueError("Only .txt files are allowed")
-        # Implementation
-        return True
-```
+# Parameter type validation
+def _execute_impl(self, x: int, y: float) -> str:
+    # x must be int, y must be float
+    return str(x + y)
 
-## Using Tools in Agents
+# Required parameters
+def get_schema(self):
+    return {
+        "parameters": {
+            "required": ["x", "y"]  # Both parameters required
+        }
+    }
 
-Tools can be used individually or in combination:
-
-```python
-# Single tool
-calculator = Calculator()
-result = await calculator.run("add", 2, 3)
-
-# Multiple tools in an agent
-agent = Agent(
-    tools=[
-        Calculator(),
-        DataAnalyzer(),
-        WebSearch()
-    ]
-)
+# Value constraints
+def get_schema(self):
+    return {
+        "parameters": {
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                }
+            }
+        }
+    }
 ```
 
 ## Best Practices
 
-1. Keep tool descriptions clear and specific
-2. Implement proper error handling
-3. Use type hints for better code clarity
-4. Document tool parameters and return values
-5. Consider security implications when creating tools 
+1. **Clear Purpose**
+   - Each tool should have a single, well-defined purpose
+   - Use clear, descriptive names and documentation
+
+2. **Error Handling**
+   - Handle expected errors gracefully
+   - Provide informative error messages
+   - Return meaningful results
+
+3. **Validation**
+   - Define clear parameter schemas
+   - Use appropriate type constraints
+   - Validate inputs thoroughly
+
+4. **Performance**
+   - Keep tools lightweight and focused
+   - Cache results when appropriate
+   - Handle resources properly
+
+5. **Testing**
+   - Test with various input combinations
+   - Verify error handling
+   - Check edge cases

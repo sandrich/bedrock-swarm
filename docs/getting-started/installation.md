@@ -1,12 +1,10 @@
-# Installation
+# Installation Guide
 
-This guide will help you get started with Bedrock Swarm.
+## Prerequisites
 
-## Requirements
-
-- Python 3.9 or later
-- AWS account with access to Bedrock
-- AWS credentials configured
+1. Python 3.11 or later
+2. AWS Account with Bedrock access
+3. AWS credentials configured
 
 ## Installation Methods
 
@@ -16,11 +14,11 @@ This guide will help you get started with Bedrock Swarm.
 # Basic installation
 pip install bedrock-swarm
 
-# With development dependencies
-pip install bedrock-swarm[dev]
+# With development tools
+pip install "bedrock-swarm[dev]"
 
-# With documentation dependencies
-pip install bedrock-swarm[docs]
+# With documentation tools
+pip install "bedrock-swarm[docs]"
 ```
 
 ### From Source
@@ -28,62 +26,64 @@ pip install bedrock-swarm[docs]
 ```bash
 git clone https://github.com/yourusername/bedrock-swarm.git
 cd bedrock-swarm
-pip install -e ".[dev,docs]"
+pip install -e .
 ```
 
 ## AWS Configuration
 
-Before using Bedrock Swarm, you need to configure your AWS credentials. There are several ways to do this:
-
-### Environment Variables
-
-```bash
-export AWS_ACCESS_KEY_ID=your_access_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_DEFAULT_REGION=your_region
-```
-
-### AWS CLI Configuration
-
-If you have the AWS CLI installed:
-
+1. Configure AWS credentials:
 ```bash
 aws configure
 ```
 
-### Using Configuration File
-
-Create a `.env` file in your project root:
-
-```plaintext
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_DEFAULT_REGION=your_region
+2. Or set environment variables:
+```bash
+export AWS_ACCESS_KEY_ID="your_access_key"
+export AWS_SECRET_ACCESS_KEY="your_secret_key"
+export AWS_REGION="us-west-2"
 ```
 
-## Verify Installation
-
-You can verify your installation by running a simple test:
+## Basic Usage
 
 ```python
-from bedrock_swarm import Agent
+from bedrock_swarm import BedrockAgent
+from bedrock_swarm.config import AWSConfig
 
-async def main():
-    agent = Agent(
-        name="test_agent",
-        model_id="anthropic.claude-v2"
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
     )
-    
-    response = await agent.run("Hello! Are you working correctly?")
+
+    # Create an agent
+    agent = BedrockAgent(
+        name="assistant",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_config=config,
+        instructions="You are a helpful AI assistant."
+    )
+
+    # Process a message
+    response = agent.process_message("Hello! What can you help me with?")
     print(response)
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
 ```
+
+## Features
+
+- Multiple model support (Claude, Titan, Jurassic, Cohere)
+- Built-in tools (web search, etc.)
+- Multi-agent coordination
+- Thread-based conversation management
+- Workflow orchestration
+- Usage monitoring and statistics
+- Error handling and validation
 
 ## Next Steps
 
-- Follow our [Quick Start Guide](quickstart.md) to create your first agent
-- Learn about [Core Concepts](../user-guide/core-concepts.md)
-- Check out the [Basic Examples](../examples/basic.md) 
+1. Read the [Quick Start Guide](quickstart.md)
+2. Explore [Core Concepts](../user-guide/core-concepts.md)
+3. Check out [Examples](../examples/)

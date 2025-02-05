@@ -33,4 +33,4 @@ This example creates two agents:
 1. A market analyst that researches and analyzes data using DuckDuckGo search
 2. A report writer that formats and presents the findings
 
-The agents work together to analyze the current state of AI in healthcare and produce a structured report. 
+The agents work together to analyze the current state of AI in healthcare and produce a structured report.

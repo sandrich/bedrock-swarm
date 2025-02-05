@@ -1,190 +1,271 @@
-# Advanced Usage Examples
+# Advanced Examples
 
-This guide demonstrates advanced usage patterns of Bedrock Swarm.
+This guide shows advanced usage patterns of Bedrock Swarm.
 
-## Multi-Agent Systems
+## Multi-Agent System
 
 Example of multiple agents working together:
 
 ```python
-from bedrock_swarm import Agent, AgentGroup
+from bedrock_swarm import Agency, BedrockAgent
+from bedrock_swarm.config import AWSConfig
+from bedrock_swarm.tools.web import WebSearchTool
 
-async def main():
-    # Create specialized agents
-    researcher = Agent(
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
+    )
+
+    # Create agency
+    agency = Agency(aws_config=config)
+
+    # Add specialized agents
+    agency.add_agent(
         name="researcher",
-        system_prompt="You are a research agent that finds and analyzes information."
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        instructions="You are a research specialist. Use web search to find information.",
+        tools=[WebSearchTool()]
     )
-    
-    writer = Agent(
-        name="writer",
-        system_prompt="You are a writing agent that creates clear and engaging content."
+
+    agency.add_agent(
+        name="analyst",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        instructions="You are a data analyst. Analyze information and identify patterns."
     )
-    
-    editor = Agent(
-        name="editor",
-        system_prompt="You are an editing agent that improves and refines content."
-    )
-    
-    # Create agent group
-    team = AgentGroup([researcher, writer, editor])
-    
-    # Collaborate on a task
-    result = await team.collaborate(
-        "Create a comprehensive article about quantum computing"
-    )
-    
-    print(result)
+
+    # Create thread and execute task
+    thread = agency.create_thread("researcher")
+    response = thread.execute("Research recent developments in quantum computing")
+    print(f"Research results: {response.content}")
+
+    # Pass to analyst
+    thread = agency.create_thread("analyst")
+    response = thread.execute(f"Analyze these findings: {response.content}")
+    print(f"Analysis: {response.content}")
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
 ```
 
-## Custom Tool Chain
+## Custom Tools
 
-Example of creating a chain of tools:
+Example of creating and using custom tools:
 
 ```python
-from bedrock_swarm import Agent, Tool
 from typing import List, Dict
+from bedrock_swarm import BedrockAgent
+from bedrock_swarm.tools.base import BaseTool
 
-class DataFetcher(Tool):
-    name = "data_fetcher"
-    description = "Fetches data from various sources"
-    
-    async def run(self, source: str) -> List[Dict]:
-        # Implementation
-        pass
+class DataCollector(BaseTool):
+    @property
+    def name(self) -> str:
+        return "data_collector"
 
-class DataProcessor(Tool):
-    name = "data_processor"
-    description = "Processes and transforms data"
-    
-    async def run(self, data: List[Dict]) -> List[Dict]:
-        # Implementation
-        pass
+    @property
+    def description(self) -> str:
+        return "Collects data from a source"
 
-class DataAnalyzer(Tool):
-    name = "data_analyzer"
-    description = "Analyzes processed data"
-    
-    async def run(self, data: List[Dict]) -> Dict:
-        # Implementation
-        pass
-
-async def main():
-    # Create agent with tool chain
-    agent = Agent(
-        name="data_analyst",
-        tools=[
-            DataFetcher(),
-            DataProcessor(),
-            DataAnalyzer()
-        ]
-    )
-    
-    # Use the tool chain
-    result = await agent.run(
-        "Fetch data from our database, process it, and provide an analysis"
-    )
-    
-    print(result)
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
-```
-
-## Advanced Memory Usage
-
-Example of using vector store memory with persistence:
-
-```python
-from bedrock_swarm import Agent
-
-async def main():
-    # Create agent with advanced memory
-    agent = Agent(
-        name="knowledge_base",
-        memory_config={
-            "type": "vectorstore",
-            "embedding_model": "amazon.titan-embed-text-v1",
-            "persistence": {
-                "enabled": True,
-                "path": "knowledge_base.json"
+    def get_schema(self):
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "description": "Data source to collect from"
+                    }
+                },
+                "required": ["source"]
             }
         }
+
+    def _execute_impl(self, source: str) -> List[Dict]:
+        # Implementation
+        return [{"data": f"Sample data from {source}"}]
+
+class DataAnalyzer(BaseTool):
+    @property
+    def name(self) -> str:
+        return "data_analyzer"
+
+    @property
+    def description(self) -> str:
+        return "Analyzes collected data"
+
+    def get_schema(self):
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "description": "Data to analyze"
+                    }
+                },
+                "required": ["data"]
+            }
+        }
+
+    def _execute_impl(self, data: List[Dict]) -> Dict:
+        # Implementation
+        return {"analysis": f"Analysis of {len(data)} data points"}
+
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
     )
-    
-    # Store complex information
-    await agent.run("Store this fact: The speed of light is approximately 299,792,458 meters per second")
-    
-    # Perform semantic search
-    result = await agent.memory.search(
-        "What is the speed of light?",
-        k=1
+
+    # Create agent with custom tools
+    agent = BedrockAgent(
+        name="data_scientist",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_config=config,
+        instructions="You are a data scientist. Use tools to collect and analyze data."
     )
-    
-    print(result)
+
+    agent.add_tool(DataCollector())
+    agent.add_tool(DataAnalyzer())
+
+    # Execute task using tools
+    response = agent.process_message("Collect and analyze data from source X")
+    print(response)
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
 ```
 
-## Custom Agent Implementation
+## Workflow Orchestration
 
-Example of creating a custom agent class:
+Example of creating and executing workflows:
 
 ```python
-from bedrock_swarm import Agent
-from typing import Any, Dict, Optional
+from bedrock_swarm import Agency
+from bedrock_swarm.config import AWSConfig
 
-class SpecializedAgent(Agent):
-    def __init__(
-        self,
-        name: str,
-        expertise: str,
-        confidence_threshold: float = 0.8,
-        **kwargs: Any
-    ):
-        super().__init__(name=name, **kwargs)
-        self.expertise = expertise
-        self.confidence_threshold = confidence_threshold
-    
-    async def evaluate_confidence(self, task: str) -> float:
-        # Implementation
-        pass
-    
-    async def run(
-        self,
-        input: str,
-        **kwargs: Any
-    ) -> Optional[str]:
-        confidence = await self.evaluate_confidence(input)
-        
-        if confidence < self.confidence_threshold:
-            return f"I am not confident enough to handle this task (confidence: {confidence})"
-        
-        return await super().run(input, **kwargs)
-
-async def main():
-    # Create specialized agent
-    expert = SpecializedAgent(
-        name="math_expert",
-        expertise="mathematics",
-        confidence_threshold=0.9
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
     )
-    
-    # Test with different queries
-    math_query = "Solve the quadratic equation x² + 2x + 1 = 0"
-    history_query = "Who won the 100 Years War?"
-    
-    print(await expert.run(math_query))
-    print(await expert.run(history_query))
+
+    # Create agency
+    agency = Agency(aws_config=config)
+
+    # Create workflow
+    workflow_id = agency.create_workflow(
+        name="research_workflow",
+        steps=[
+            {
+                "agent": "researcher",
+                "instructions": "Research the topic",
+                "tools": ["web_search"]
+            },
+            {
+                "agent": "analyst",
+                "instructions": "Analyze the findings",
+                "input_from": ["step1"]
+            },
+            {
+                "agent": "writer",
+                "instructions": "Write a report",
+                "input_from": ["step1", "step2"]
+            }
+        ]
+    )
+
+    # Execute workflow
+    results = agency.execute_workflow(
+        workflow_id=workflow_id,
+        input_data={"topic": "AI safety"}
+    )
+
+    # Get workflow status
+    status = agency.get_workflow_status(workflow_id)
+    print(f"Workflow status: {status}")
+    print(f"Results: {results}")
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
-``` 
+    main()
+```
+
+## Advanced Error Handling
+
+Example of advanced error handling and retries:
+
+```python
+from bedrock_swarm import BedrockAgent
+from bedrock_swarm.exceptions import ModelInvokeError, ToolError
+from bedrock_swarm.tools.base import BaseTool
+
+class RiskAssessor(BaseTool):
+    @property
+    def name(self) -> str:
+        return "risk_assessor"
+
+    @property
+    def description(self) -> str:
+        return "Assesses risk level of a task"
+
+    def get_schema(self):
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "Task to evaluate"
+                    }
+                },
+                "required": ["task"]
+            }
+        }
+
+    def _execute_impl(self, task: str) -> float:
+        # Implementation
+        return 0.7  # Risk score between 0 and 1
+
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
+    )
+
+    # Create agent with risk assessment
+    agent = BedrockAgent(
+        name="safety_agent",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_config=config,
+        instructions="You are a safety-conscious AI assistant."
+    )
+
+    agent.add_tool(RiskAssessor())
+
+    try:
+        # Process message with risk assessment
+        response = agent.process_message("Execute this potentially risky task")
+        print(response)
+    except ModelInvokeError as e:
+        print(f"Model error: {e}")
+        # Handle model errors (e.g., retry with different parameters)
+    except ToolError as e:
+        print(f"Tool error: {e}")
+        # Handle tool errors (e.g., try alternative tool)
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        # Log error and notify administrators
+
+if __name__ == "__main__":
+    main()
+```

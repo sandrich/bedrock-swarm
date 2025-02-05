@@ -103,4 +103,4 @@ agent = Agent(
 2. Consider memory persistence for long-running applications
 3. Monitor memory usage and clean up when necessary
 4. Use semantic search for complex information retrieval
-5. Implement proper error handling for memory operations 
+5. Implement proper error handling for memory operations

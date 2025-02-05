@@ -1,94 +1,117 @@
-# Memory API Reference
+# Memory API
+
+The memory system in Bedrock Swarm allows agents to maintain conversation history and context.
 
 ## BaseMemory
 
-::: bedrock_swarm.memory.base.BaseMemory
-    options:
-      show_root_heading: true
-      show_source: true
+Abstract base class for memory implementations:
+
+```python
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import List, Optional
+
+from bedrock_swarm.memory import Message
+
+class BaseMemory(ABC):
+    @abstractmethod
+    def add_message(self, message: Message) -> None:
+        """Add a message to memory."""
+        pass
+
+    @abstractmethod
+    def get_messages(
+        self,
+        limit: Optional[int] = None,
+        before: Optional[datetime] = None,
+        after: Optional[datetime] = None,
+        role: Optional[str] = None,
+    ) -> List[Message]:
+        """Get messages from memory."""
+        pass
+
+    @abstractmethod
+    def clear(self) -> None:
+        """Clear all messages from memory."""
+        pass
+```
 
 ## SimpleMemory
 
-::: bedrock_swarm.memory.base.SimpleMemory
-    options:
-      show_root_heading: true
-      show_source: true
-
-## Message
-
-::: bedrock_swarm.memory.base.Message
-    options:
-      show_root_heading: true
-      show_source: true
-
-## Using Memory
-
-### Basic Usage
+Basic in-memory implementation:
 
 ```python
 from bedrock_swarm.memory import SimpleMemory, Message
-from datetime import datetime
 
 # Create memory system
-memory = SimpleMemory()
+memory = SimpleMemory(max_size=1000)
 
 # Add messages
-await memory.add_message(Message(
+memory.add_message(Message(
     role="human",
     content="Hello!",
     timestamp=datetime.now()
 ))
 
-await memory.add_message(Message(
-    role="assistant",
-    content="Hi there!",
-    timestamp=datetime.now()
-))
+# Get messages
+messages = memory.get_messages(limit=10)
 
-# Retrieve messages
-messages = await memory.get_messages()
-for msg in messages:
-    print(f"{msg.role}: {msg.content}")
+# Clear memory
+memory.clear()
 ```
 
-### Filtering Messages
+## Message
+
+Data class for messages:
 
 ```python
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional, Dict, Any
 
-# Get recent messages
-now = datetime.now()
-recent = await memory.get_messages(
-    after=now - timedelta(minutes=5)
-)
-
-# Get messages by role
-human_msgs = await memory.get_messages(role="human")
-
-# Get limited number of messages
-last_3 = await memory.get_messages(limit=3)
+@dataclass
+class Message:
+    role: str
+    content: str
+    timestamp: datetime
+    metadata: Optional[Dict[str, Any]] = None
 ```
 
-### With Metadata
+## Usage Example
+
+Example of using memory in an agent:
 
 ```python
-# Add message with metadata
-await memory.add_message(Message(
-    role="system",
-    content="Configuration updated",
-    timestamp=datetime.now(),
-    metadata={
-        "config_type": "model",
-        "changes": ["temperature", "max_tokens"]
-    }
-))
+from bedrock_swarm import BedrockAgent
+from bedrock_swarm.memory import SimpleMemory
+from bedrock_swarm.config import AWSConfig
 
-# Filter by examining metadata
-messages = await memory.get_messages()
-config_msgs = [
-    msg for msg in messages
-    if msg.metadata and msg.metadata.get("config_type") == "model"
-]
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
+    )
+
+    # Create agent with memory
+    agent = BedrockAgent(
+        name="assistant",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_config=config,
+        memory=SimpleMemory(max_size=100)
+    )
+
+    # Have a conversation
+    agent.process_message("My name is Alice")
+    agent.process_message("What's my name?")  # Agent remembers "Alice"
+
+    # View memory contents
+    messages = agent.memory.get_messages(limit=5)
+    for msg in messages:
+        print(f"{msg.role}: {msg.content}")
+
+if __name__ == "__main__":
+    main()
 ```
 
 ## Creating Custom Memory Systems
@@ -103,12 +126,12 @@ from datetime import datetime
 class CustomMemory(BaseMemory):
     def __init__(self):
         self._messages = []
-    
-    async def add_message(self, message: Message) -> None:
+
+    def add_message(self, message: Message) -> None:
         # Add custom processing here
         self._messages.append(message)
-    
-    async def get_messages(
+
+    def get_messages(
         self,
         limit: Optional[int] = None,
         before: Optional[datetime] = None,
@@ -116,7 +139,7 @@ class CustomMemory(BaseMemory):
         role: Optional[str] = None
     ) -> List[Message]:
         messages = self._messages
-        
+
         # Apply filters
         if before:
             messages = [m for m in messages if m.timestamp < before]
@@ -126,10 +149,10 @@ class CustomMemory(BaseMemory):
             messages = [m for m in messages if m.role == role]
         if limit:
             messages = messages[-limit:]
-        
+
         return messages
-    
-    async def clear(self) -> None:
+
+    def clear(self) -> None:
         self._messages.clear()
 ```
 
@@ -148,4 +171,4 @@ class CustomMemory(BaseMemory):
 3. **Custom Implementations**
    - Consider persistence requirements
    - Implement efficient filtering
-   - Handle concurrent access if needed 
+   - Handle concurrent access if needed

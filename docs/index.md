@@ -1,71 +1,83 @@
-# Welcome to Bedrock Swarm
+# Bedrock Swarm
 
-Bedrock Swarm is a powerful framework for building multi-agent systems using AWS Bedrock. It provides a simple yet flexible API for creating and managing AI agents powered by various AWS Bedrock models.
+A powerful framework for building multi-agent systems using AWS Bedrock.
 
-## Key Features
+## Features
 
-- **Easy Agent Creation**: Create AI agents with just a few lines of code
-- **AWS Bedrock Integration**: Native support for AWS Bedrock models
-- **Multi-Agent Support**: Build complex systems with multiple cooperating agents
-- **Extensible Tools**: Add custom capabilities to your agents
-- **Memory Management**: Built-in conversation memory management
-- **Async Support**: Handle concurrent operations efficiently
+- 🤖 **Multiple Model Support**
+  - Claude 3.5 (latest)
+  - Claude 2
+  - Titan
+  - Jurassic
+  - Cohere
+
+- 🛠️ **Built-in Tools**
+  - Web search
+  - Custom tool support
+  - Parameter validation
+  - Error handling
+
+- 🧠 **Multi-Agent Coordination**
+  - Thread-based conversations
+  - Workflow orchestration
+  - Agent specialization
+  - Result aggregation
+
+- 📊 **Monitoring & Control**
+  - Usage statistics
+  - Token tracking
+  - Thread management
+  - Workflow status
+
+- 🔧 **Developer Experience**
+  - Clear error messages
+  - Type hints
+  - Comprehensive documentation
+  - Example code
 
 ## Quick Start
 
 ```python
-from bedrock_swarm import Agent
+from bedrock_swarm import BedrockAgent
+from bedrock_swarm.config import AWSConfig
 
-async def main():
-    # Create an agent
-    agent = Agent(
-        name="assistant",
-        model_id="anthropic.claude-v2"
+def main():
+    # Configure AWS
+    config = AWSConfig(
+        region="us-west-2",
+        profile="default"
     )
-    
-    # Have a conversation
-    response = await agent.run("Hello! Can you help me with a task?")
+
+    # Create an agent
+    agent = BedrockAgent(
+        name="assistant",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_config=config,
+        instructions="You are a helpful AI assistant."
+    )
+
+    # Process a message
+    response = agent.process_message("Hello! What can you help me with?")
     print(response)
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
 ```
 
 ## Installation
-
-Install Bedrock Swarm using pip:
 
 ```bash
 pip install bedrock-swarm
 ```
 
-For development:
-
-```bash
-pip install bedrock-swarm[dev]
-```
-
-For documentation:
-
-```bash
-pip install bedrock-swarm[docs]
-```
-
-## Next Steps
-
-- Check out the [Quick Start Guide](getting-started/quickstart.md) for a more detailed introduction
-- Learn about the core concepts in the [User Guide](user-guide/core-concepts.md)
-- Browse the [API Reference](api/agents.md) for detailed documentation
-- See [Examples](examples/basic.md) for practical use cases
-
 ## Documentation
 
-- [Getting Started](getting-started/installation.md)
-- [User Guide](user-guide/core-concepts.md)
-- [API Reference](api/agents.md)
-- [Examples](examples/basic.md)
+- [Installation Guide](getting-started/installation.md)
+- [Quick Start Guide](getting-started/quickstart.md)
+- [Core Concepts](user-guide/core-concepts.md)
+- [API Reference](api/index.md)
+- [Examples](examples/index.md)
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](contributing.md) for details. 
+We welcome contributions! Check out our [Contributing Guide](contributing.md) to get started.
