@@ -30,6 +30,7 @@ theme:
 
 plugins:
   - search
+  - mermaid2
   - mkdocstrings:
       default_handler: python
       handlers:
