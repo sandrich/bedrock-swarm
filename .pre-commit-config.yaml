@@ -6,9 +6,12 @@ repos:
     -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-added-large-files
+    -   id: check-merge-conflict
+    -   id: mixed-line-ending
+        args: [--fix=lf]
 
 -   repo: https://github.com/psf/black
-    rev: 24.2.0
+    rev: 23.12.1
     hooks:
     -   id: black
 
@@ -16,31 +19,40 @@ repos:
     rev: 5.13.2
     hooks:
     -   id: isort
+        args: ["--profile", "black"]
 
 -   repo: https://github.com/pycqa/flake8
     rev: 7.0.0
     hooks:
     -   id: flake8
-        additional_dependencies: [
-            'flake8-docstrings',
-        ]
+        additional_dependencies:
+            - flake8-docstrings
+            - flake8-bugbear
+            - flake8-comprehensions
+            - flake8-simplify
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
+    rev: v1.8.0
     hooks:
     -   id: mypy
         exclude: ^tests/
-        additional_dependencies: [
-            'types-jsonschema',
-            'boto3-stubs',
-            'types-requests',
-        ]
+        additional_dependencies:
+            - types-requests
+            - types-PyYAML
+            - types-python-dateutil
 
 -   repo: local
     hooks:
     -   id: pytest
         name: pytest
         entry: pytest tests/unit/
+        language: system
+        pass_filenames: false
+        always_run: true
+
+    -   id: mkdocs
+        name: mkdocs
+        entry: mkdocs build --strict
         language: system
         pass_filenames: false
         always_run: true

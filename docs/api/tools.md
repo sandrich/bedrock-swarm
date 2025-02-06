@@ -4,50 +4,16 @@ Tools extend agents' capabilities by allowing them to perform specific actions.
 
 ## BaseTool
 
-Abstract base class for implementing tools:
+::: bedrock_swarm.tools.base.BaseTool
+    handler: python
+    options:
+      show_root_heading: true
+      show_source: true
 
-```python
-from abc import ABC, abstractmethod
-from typing import Dict, Any
+## CurrentTimeTool
 
-class BaseTool(ABC):
-    def __init__(self, name: str, description: str) -> None:
-        self._name = name
-        self._description = description
-        schema = self.get_schema()
-        validate_tool_schema(self.name, schema)
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Get tool name."""
-        pass
-
-    @property
-    @abstractmethod
-    def description(self) -> str:
-        """Get tool description."""
-        pass
-
-    @abstractmethod
-    def get_schema(self) -> Dict[str, Any]:
-        """Get JSON schema for the tool."""
-        pass
-
-    def execute(self, **kwargs: Any) -> str:
-        """Execute the tool with validation."""
-        validate_tool_parameters(self.get_schema(), **kwargs)
-        return self._execute_impl(**kwargs)
-
-    @abstractmethod
-    def _execute_impl(self, **kwargs: Any) -> str:
-        """Implement the tool's functionality."""
-        pass
-```
-
-## WebSearchTool
-
-::: bedrock_swarm.tools.web.WebSearchTool
+::: bedrock_swarm.tools.time.CurrentTimeTool
+    handler: python
     options:
       show_root_heading: true
       show_source: true
@@ -55,6 +21,7 @@ class BaseTool(ABC):
 ## ToolFactory
 
 ::: bedrock_swarm.tools.factory.ToolFactory
+    handler: python
     options:
       show_root_heading: true
       show_source: true
@@ -120,7 +87,7 @@ tool = ToolFactory.create_tool("CustomTool")
 
 ```python
 # Add by tool type name
-agent.add_tool("WebSearchTool")
+agent.add_tool("CurrentTimeTool")
 
 # Add tool instance
 custom_tool = CustomTool()
@@ -142,100 +109,32 @@ agent.clear_tools()
 
 ## Built-in Tools
 
-### WebSearchTool
+### CurrentTimeTool
 
-Tool for performing web searches:
+Tool for getting the current time in different formats and timezones:
 
 ```python
-from bedrock_swarm.tools.web import WebSearchTool
+from bedrock_swarm.tools.time import CurrentTimeTool
 
 # Create and configure tool
-search_tool = WebSearchTool()
+time_tool = CurrentTimeTool()
 
-# Execute search
-result = search_tool.execute(
-    query="Latest developments in AI",
-    num_results=5
+# Get current time in ISO format
+result = time_tool.execute()
+print(result)  # "2024-02-06T13:48:40.722200"
+
+# Get time in specific format and timezone
+result = time_tool.execute(
+    format="%Y-%m-%d %H:%M:%S",
+    timezone="UTC"
 )
-print(result)
+print(result)  # "2024-02-06 13:48:40"
 ```
 
 #### Parameters
 
-- `query` (str): The search query
-- `num_results` (int, optional): Number of results to return (default: 5)
-
-#### Example Response
-
-```python
-1. Latest Quantum Computing Breakthrough
-   https://example.com/article1
-   Description of the breakthrough...
-
-2. Quantum Computing Research Update
-   https://example.com/article2
-   Recent developments in the field...
-```
-
-## Creating Custom Tools
-
-Example of creating a custom tool:
-
-```python
-from bedrock_swarm.tools.base import BaseTool
-from typing import Dict, Any
-
-class Calculator(BaseTool):
-    @property
-    def name(self) -> str:
-        return "calculator"
-
-    @property
-    def description(self) -> str:
-        return "Performs basic arithmetic operations"
-
-    def get_schema(self) -> Dict[str, Any]:
-        return {
-            "name": self.name,
-            "description": self.description,
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "x": {"type": "number", "description": "First number"},
-                    "y": {"type": "number", "description": "Second number"},
-                    "operation": {
-                        "type": "string",
-                        "description": "Operation to perform",
-                        "enum": ["add", "subtract", "multiply", "divide"]
-                    }
-                },
-                "required": ["x", "y", "operation"]
-            }
-        }
-
-    def _execute_impl(self, **kwargs) -> str:
-        x = kwargs["x"]
-        y = kwargs["y"]
-        operation = kwargs["operation"]
-
-        if operation == "add":
-            result = x + y
-        elif operation == "subtract":
-            result = x - y
-        elif operation == "multiply":
-            result = x * y
-        elif operation == "divide":
-            if y == 0:
-                return "Error: Division by zero"
-            result = x / y
-
-        return f"{x} {operation} {y} = {result}"
-
-# Create and use the tool
-calculator = Calculator()
-result = calculator.execute(x=5, y=3, operation="multiply")
-print(result)  # "5 multiply 3 = 15"
-```
+- `format` (str, optional): Datetime format string (default: "iso")
+- `timezone` (str, optional): Timezone name (default: "local")
 
 ## Tool Validation
 
@@ -315,7 +214,7 @@ Example of using tools with an agent:
 
 ```python
 from bedrock_swarm import BedrockAgent
-from bedrock_swarm.tools.web import WebSearchTool
+from bedrock_swarm.tools.time import CurrentTimeTool
 from bedrock_swarm.config import AWSConfig
 
 def main():
@@ -327,20 +226,18 @@ def main():
 
     # Create agent
     agent = BedrockAgent(
-        name="researcher",
+        name="assistant",
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         aws_config=config,
-        instructions="You are a research assistant. Use the web search tool to find information."
+        instructions="You are a helpful assistant that can tell time."
     )
 
     # Add tools
-    agent.add_tool(WebSearchTool())
-    agent.add_tool(Calculator())
+    agent.add_tool(CurrentTimeTool())
 
     # The agent will automatically use tools when needed
     response = agent.process_message(
-        "What are the latest developments in AI safety? "
-        "Also, what is 25 times 4?"
+        "What time is it in UTC?"
     )
     print(response)
 

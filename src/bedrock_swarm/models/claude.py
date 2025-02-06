@@ -77,7 +77,7 @@ class Claude35Model(BedrockModel):
 
         try:
             # Invoke model with streaming
-            response = client.invoke_model_with_response_stream(  # type: ignore[attr-defined]
+            response = client.invoke_model_with_response_stream(
                 modelId="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
                 body=json.dumps(request),
             )

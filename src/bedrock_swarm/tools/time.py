@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from zoneinfo import ZoneInfo
 
 from .base import BaseTool
@@ -103,12 +103,19 @@ class CurrentTimeTool(BaseTool):
         test_date.strftime(fmt)
         logger.debug("Format string validation successful")
 
-    def _execute_impl(self, **kwargs: Any) -> str:
+    def _execute_impl(
+        self,
+        *,
+        format: Optional[str] = None,
+        timezone: Optional[str] = None,
+        **kwargs: Any,
+    ) -> str:
         """Execute the time tool.
 
         Args:
             format: Optional datetime format string
             timezone: Optional timezone name
+            **kwargs: Additional keyword arguments (unused)
 
         Returns:
             Formatted current time string
@@ -123,7 +130,7 @@ class CurrentTimeTool(BaseTool):
         logger.debug(f"Current time: {now}")
 
         # Handle timezone
-        tz = kwargs.get("timezone", "local")
+        tz = timezone or "local"
         logger.debug(f"Using timezone: {tz}")
         if tz != "local":
             try:
@@ -133,7 +140,7 @@ class CurrentTimeTool(BaseTool):
                 raise ValueError("Invalid timezone")
 
         # Handle format
-        fmt = kwargs.get("format", "iso")
+        fmt = format or "iso"
         logger.debug(f"Using format: {fmt}")
         if fmt == "iso":
             result = now.isoformat()

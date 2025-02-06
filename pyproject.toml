@@ -67,8 +67,9 @@ python_files = ["test_*.py"]
 
 [tool.black]
 line-length = 88
-target-version = ['py39']
+target-version = ['py37']
 include = '\.pyi?$'
+skip-string-normalization = false
 
 [tool.isort]
 profile = "black"

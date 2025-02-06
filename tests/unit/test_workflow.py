@@ -300,7 +300,7 @@ def test_complex_workflow_execution(aws_config: AWSConfig) -> None:
     assert researcher_step is not None
 
     # Verify message passing
-    for agent_name, agent in agents.items():
+    for agent_name, _agent in agents.items():
         mock_process = mock_responses[agent_name]
         if agent_name == "researcher":
             mock_process.assert_called_once_with(

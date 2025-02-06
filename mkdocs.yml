@@ -73,11 +73,14 @@ nav:
     - Agents: user-guide/agents.md
     - Tools: user-guide/tools.md
     - Memory: user-guide/memory.md
+    - Logging: user-guide/logging.md
+    - Advanced Features: user-guide/advanced.md
   - API Reference:
     - Agents: api/agents.md
     - Tools: api/tools.md
     - Memory: api/memory.md
   - Examples:
+    - Overview: examples/README.md
     - Basic Usage: examples/basic.md
     - Advanced Patterns: examples/advanced.md
   - Contributing: contributing.md

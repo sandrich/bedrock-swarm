@@ -12,7 +12,7 @@ A powerful framework for building multi-agent systems using AWS Bedrock.
   - Cohere
 
 - 🛠️ **Built-in Tools**
-  - Web search
+  - Time operations
   - Custom tool support
   - Parameter validation
   - Error handling
@@ -40,44 +40,45 @@ A powerful framework for building multi-agent systems using AWS Bedrock.
 ```python
 from bedrock_swarm import BedrockAgent
 from bedrock_swarm.config import AWSConfig
+from bedrock_swarm.tools.time import CurrentTimeTool
 
-def main():
-    # Configure AWS
-    config = AWSConfig(
-        region="us-west-2",
-        profile="default"
-    )
+# Configure AWS credentials
+config = AWSConfig(
+    region="us-west-2",
+    profile="default"
+)
 
-    # Create an agent
-    agent = BedrockAgent(
-        name="assistant",
-        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        aws_config=config,
-        instructions="You are a helpful AI assistant."
-    )
+# Create an agent
+agent = BedrockAgent(
+    name="assistant",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    aws_config=config,
+    instructions="You are a helpful assistant that can tell time."
+)
 
-    # Process a message
-    response = agent.process_message("Hello! What can you help me with?")
-    print(response)
+# Add tools
+agent.add_tool(CurrentTimeTool())
 
-if __name__ == "__main__":
-    main()
-```
-
-## Installation
-
-```bash
-pip install bedrock-swarm
+# Process a message
+response = agent.process_message(
+    "What time is it in UTC?"
+)
+print(response)
 ```
 
 ## Documentation
 
-- [Installation Guide](getting-started/installation.md)
-- [Quick Start Guide](getting-started/quickstart.md)
-- [Core Concepts](user-guide/core-concepts.md)
-- [API Reference](api/index.md)
-- [Examples](examples/index.md)
+- [Installation](getting-started/installation.md)
+- [Configuration](getting-started/configuration.md)
+- [Basic Usage](getting-started/quickstart.md)
+- [Tools API](api/tools.md)
+- [Advanced Features](user-guide/advanced.md)
+- [Examples](examples/README.md)
 
 ## Contributing
 
-We welcome contributions! Check out our [Contributing Guide](contributing.md) to get started.
+We welcome contributions! Please see our [Contributing Guide](contributing.md) for details.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/yourusername/bedrock-swarm/blob/main/LICENSE) file for details.
