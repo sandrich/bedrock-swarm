@@ -1,68 +1,148 @@
 # Core Concepts
 
-Bedrock Swarm is built around several key concepts that work together to create powerful multi-agent systems.
+This guide explains the fundamental concepts of Bedrock Swarm and how they work together to create powerful AI applications.
 
-## Agents
+## System Overview
 
-Agents are the core building blocks of the system. Each agent is powered by an AWS Bedrock model and can:
+```mermaid
+graph TD
+    A[Your Application] --> B[Bedrock Swarm]
+    B --> C[AWS Bedrock]
+    B --> D[Agents]
+    D --> E[Tools]
+    D --> F[Memory]
+    B --> G[Agency]
+    G --> H[Workflows]
+    G --> I[Threads]
+```
 
-- Process messages and generate responses
+### Key Components
+
+1. **AWS Bedrock**: The foundation that provides access to powerful language models
+2. **Agents**: AI assistants that can process messages and use tools
+3. **Tools**: Additional capabilities that agents can use
+4. **Memory**: System for maintaining conversation history
+5. **Agency**: Coordinator for multiple agents working together
+6. **Workflows**: Structured sequences of agent tasks
+
+## Understanding AWS Bedrock
+
+AWS Bedrock is Amazon's foundation model service that provides:
+- Access to multiple AI models (Claude, Titan, etc.)
+- Secure API endpoints
+- Usage monitoring and billing
+- Model version management
+
+### Available Models
+
+Bedrock Swarm supports these model families:
+
+1. **Anthropic Claude**
+   - Best for: Complex reasoning, coding, analysis
+   - Models: Claude 3.5, Claude 2
+   - Features: High accuracy, code understanding
+
+2. **Amazon Titan**
+   - Best for: General text tasks, summarization
+   - Models: Text Express, Text Lite
+   - Features: Cost-effective, fast responses
+
+3. **AI21 Jurassic**
+   - Best for: Creative writing, text generation
+   - Models: J2 Mid, J2 Ultra
+   - Features: Creative outputs, multiple languages
+
+4. **Cohere Command**
+   - Best for: Text classification, analysis
+   - Models: Command Text v14
+   - Features: Efficient processing, classification
+
+## Agents in Detail
+
+Agents are the core building blocks of Bedrock Swarm. Each agent is an AI assistant that can:
+- Process messages using a language model
+- Follow specific instructions
 - Use tools to perform actions
 - Maintain conversation memory
-- Follow specific instructions
-- Handle function calling and tool execution
+
+### Agent Architecture
+
+```mermaid
+graph TD
+    A[Input Message] --> B[Agent]
+    B --> C[Language Model]
+    B --> D[Tools]
+    B --> E[Memory]
+    C --> F[Response]
+    D --> F
+    E --> B
+```
+
+### Creating an Agent
 
 ```python
+from bedrock_swarm import BedrockAgent
+from bedrock_swarm.config import AWSConfig
+
+# Basic agent configuration
 agent = BedrockAgent(
-    name="assistant",
-    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",  # Latest Claude 3.5 model
+    name="helper",                   # Unique identifier
+    model_id="...",                 # AWS Bedrock model
+    aws_config=config,              # AWS settings
+    instructions="...",             # Behavior guidelines
+    temperature=0.7,                # Response creativity
+    max_tokens=1000                # Response length
+)
+
+# Agent with tools
+from bedrock_swarm.tools.time import CurrentTimeTool
+agent.add_tool(CurrentTimeTool())
+
+# Agent with custom instructions
+agent = BedrockAgent(
+    name="coding_assistant",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
     aws_config=config,
-    instructions="You are a helpful AI assistant.",
-    temperature=0.7,
-    max_tokens=1000
+    instructions="""You are a Python coding assistant.
+    When writing code:
+    1. Always include comments
+    2. Follow PEP 8 style guidelines
+    3. Include error handling
+    4. Add type hints
+    """
 )
 ```
 
-### Agent Properties
+## Tools System
 
-- `name`: Unique identifier for the agent
-- `model_id`: AWS Bedrock model to use (supports Claude, Titan, Jurassic, and Cohere models)
-- `instructions`: System prompt/instructions for the agent
-- `temperature`: Controls response randomness (0-1)
-- `max_tokens`: Maximum response length
+Tools extend agents' capabilities by allowing them to perform specific actions.
 
-### Supported Models
+### Tool Architecture
 
-The following model families and versions are supported:
+```mermaid
+graph TD
+    A[Agent] --> B[Tool Manager]
+    B --> C[Tool Registry]
+    B --> D[Parameter Validation]
+    B --> E[Error Handling]
+    C --> F[Built-in Tools]
+    C --> G[Custom Tools]
+```
 
-- Anthropic Claude 3.5:
-  - `us.anthropic.claude-3-5-sonnet-20241022-v2:0`
-- Amazon Titan:
-  - `amazon.titan-text-express-v1`
-  - `amazon.titan-text-lite-v1`
-- AI21 Jurassic:
-  - `ai21.j2-mid-v1`
-  - `ai21.j2-ultra-v1`
-- Cohere Command:
-  - `cohere.command-text-v14`
-
-## Tools
-
-Tools extend agents' capabilities by allowing them to perform specific actions. Tools include built-in validation:
+### Creating Custom Tools
 
 ```python
-# Built-in tools
-agent.add_tool("WebSearchTool")  # DuckDuckGo web search
+from bedrock_swarm.tools import BaseTool
+from typing import Dict, Any
 
-# Custom tools
-class CustomTool(BaseTool):
+class CalculatorTool(BaseTool):
     @property
     def name(self) -> str:
-        return "custom_tool"
+        return "calculator"
 
     @property
     def description(self) -> str:
-        return "Description of what the tool does"
+        return "Performs basic mathematical calculations"
 
     def get_schema(self) -> Dict[str, Any]:
         return {
@@ -71,285 +151,241 @@ class CustomTool(BaseTool):
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "param1": {
+                    "expression": {
                         "type": "string",
-                        "description": "First parameter"
-                    },
-                    "param2": {
-                        "type": "integer",
-                        "description": "Second parameter",
-                        "minimum": 1,
-                        "maximum": 10
+                        "description": "Mathematical expression to evaluate"
                     }
                 },
-                "required": ["param1"]
+                "required": ["expression"]
             }
         }
 
-    def _execute_impl(self, **kwargs) -> str:
-        # Tool implementation
-        return "Result"
+    def _execute_impl(self, expression: str) -> str:
+        try:
+            result = eval(expression)
+            return str(result)
+        except Exception as e:
+            return f"Error: {str(e)}"
 ```
 
-### Tool Properties
+## Memory Systems
 
-- `name`: Unique identifier for the tool
-- `description`: What the tool does
-- `schema`: JSON schema defining parameters and validation rules
-- `_execute_impl`: Implementation of the tool's functionality
+Memory allows agents to maintain context across conversations.
 
-### Tool Validation
+### Memory Types
 
-Tools include built-in validation for:
-- Required parameters
-- Parameter types (string, integer, boolean, array)
-- Numeric constraints (minimum, maximum)
-- Array constraints (minItems, maxItems)
-- Nested object structures
-
-### Function Calling
-
-Agents can use tools through a function calling interface. The agent can:
-1. Parse tool schemas and understand available functions
-2. Generate valid JSON function calls
-3. Handle function results and continue the conversation
-
-Example function call format:
-```json
-{
-    "function": "web_search",
-    "parameters": {
-        "query": "latest AI developments",
-        "num_results": 5
-    }
-}
-```
-
-## Memory
-
-Memory systems allow agents to maintain context across conversations. The library includes a simple memory implementation and supports custom memory systems:
+1. **Simple Memory**
+   - Stores messages in a list
+   - Basic but efficient
+   - Good for most use cases
 
 ```python
-class CustomMemory(BaseMemory):
-    def add_message(self, message: Message) -> None:
-        # Store message
-        pass
+from bedrock_swarm.memory import SimpleMemory
 
-    def get_messages(self, limit: Optional[int] = None) -> List[Message]:
-        # Retrieve messages with optional limit
-        pass
-
-    def clear(self) -> None:
-        # Clear memory
-        pass
+agent = BedrockAgent(
+    name="assistant",
+    model_id="...",
+    aws_config=config,
+    memory=SimpleMemory()
+)
 ```
 
-### Message Properties
-
-- `role`: Who sent the message (human/assistant/system)
-- `content`: The message content
-- `timestamp`: When the message was sent
-- `tool_calls`: List of tool calls made in the message
-- `tool_results`: Results from tool executions
-- `metadata`: Additional information
-
-## Agency
-
-Agencies coordinate multiple agents to solve complex tasks. They support both sequential and parallel execution patterns:
+2. **Vector Memory**
+   - Stores message embeddings
+   - Enables semantic search
+   - Good for large conversations
 
 ```python
-# Create agency with shared configuration
+from bedrock_swarm.memory import VectorMemory
+
+agent = BedrockAgent(
+    name="assistant",
+    model_id="...",
+    aws_config=config,
+    memory=VectorMemory()
+)
+```
+
+### Message Structure
+
+```python
+@dataclass
+class Message:
+    role: str              # 'human', 'assistant', or 'system'
+    content: str           # The message text
+    timestamp: float       # When the message was sent
+    tool_calls: List[Dict] # Tools used in this message
+    tool_results: List[str] # Results from tool calls
+    metadata: Dict         # Additional information
+```
+
+## Agency and Multi-Agent Systems
+
+Agencies coordinate multiple agents to solve complex tasks.
+
+### Agency Architecture
+
+```mermaid
+graph TD
+    A[Agency] --> B[Agent Pool]
+    A --> C[Thread Manager]
+    A --> D[Workflow Engine]
+    B --> E[Agent 1]
+    B --> F[Agent 2]
+    C --> G[Thread 1]
+    C --> H[Thread 2]
+    D --> I[Workflow 1]
+    D --> J[Workflow 2]
+```
+
+### Creating an Agency
+
+```python
+from bedrock_swarm import Agency
+
+# Create agency
 agency = Agency(
-    memory=SimpleMemory(),  # Shared memory
-    max_rounds=3,  # Maximum discussion rounds
-    shared_instructions="Common instructions for all agents",
-    shared_files=["context.txt"],  # Shared reference files
-    temperature=0.7,  # Default temperature
-    max_tokens=1000  # Default max tokens
+    aws_config=config,
+    shared_instructions="Common instructions for all agents"
 )
 
-# Add agents with specific roles
+# Add specialized agents
 agency.add_agent(
     name="researcher",
-    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-    instructions="You are a research specialist.",
+    model_id="...",
+    instructions="Research specialist instructions",
     tools=[WebSearchTool()]
 )
 
-# Sequential execution
-result = agency.execute(task)
+agency.add_agent(
+    name="writer",
+    model_id="...",
+    instructions="Content writer instructions"
+)
 
-# Multi-round discussion
-history = agency.discuss(topic)
-
-# Get execution status and stats
-status = agency.get_workflow_status(workflow_id)
-stats = agency.get_agent_stats(agent_name)
-```
-
-### Agency Features
-
-- Task distribution and workflow management
-- Agent coordination and communication
-- Result aggregation and state management
-- Multi-round discussions with memory
-- Execution statistics and monitoring
-- Shared context and configuration
-
-## Error Handling
-
-The library provides specific exceptions for different error cases:
-
-```python
-try:
-    result = agent.process_message(message)
-except ModelInvokeError as e:
-    # Handle model API errors
-    print(f"Model error: {e}")
-except ToolError as e:
-    # Handle tool-related errors
-    print(f"Tool error: {e}")
-except ResponseParsingError as e:
-    # Handle response parsing errors
-    print(f"Parsing error: {e}")
-except InvalidModelError as e:
-    # Handle invalid model configuration
-    print(f"Model config error: {e}")
-```
-
-### Common Exceptions
-
-- `ModelInvokeError`: AWS Bedrock API errors
-- `ToolError`: Base class for tool-related errors
-- `ToolNotFoundError`: Unknown tool requested
-- `ToolExecutionError`: Tool execution failed
-- `ResponseParsingError`: Invalid model response
-- `InvalidModelError`: Invalid model configuration
-- `AWSConfigError`: AWS configuration issues
-
-## Best Practices
-
-1. **Agent Design**
-   - Give clear, specific instructions
-   - Use appropriate temperature settings (0.7 recommended for most cases)
-   - Choose the right model for the task (Claude 3.5 for complex tasks)
-   - Implement proper error handling
-   - Monitor token usage and costs
-
-2. **Tool Implementation**
-   - Make tools focused and reusable
-   - Provide clear documentation and schemas
-   - Use proper parameter validation
-   - Handle errors gracefully
-   - Test with different parameter combinations
-
-3. **Memory Management**
-   - Clear memory when appropriate
-   - Consider memory limitations
-   - Use metadata for organization
-   - Implement custom memory for specific needs
-   - Consider persistence requirements
-
-4. **Agency Coordination**
-   - Define clear agent roles
-   - Break down complex tasks
-   - Monitor agent interactions
-   - Use shared context effectively
-   - Set appropriate round limits
-   - Use sequential execution for dependent tasks
-
-## Threads
-
-Threads manage conversations between users and agents. Each thread:
-
-- Has a unique ID
-- Maintains message history
-- Tracks tool usage
-- Supports tool execution and results
-
-```python
-# Create a thread with an agent
-thread = agency.create_thread(agent_name="researcher")
-
-# Execute a message in the thread
-response = thread.execute("What can you tell me about AI safety?")
-
-# Get thread history
-history = thread.get_formatted_history()
-
-# Clear thread history
-thread.clear_history()
-```
-
-### Thread Features
-- Message history tracking
-- Tool execution state management
-- Formatted history retrieval
-- Support for tool calls and results
-- Metadata storage
-
-## Workflows
-
-Workflows allow you to orchestrate multi-step processes with different agents:
-
-```python
 # Create a workflow
-workflow_id = agency.create_workflow(
-    name="research_workflow",
+workflow = agency.create_workflow(
+    name="content_creation",
     steps=[
         {
             "agent": "researcher",
             "instructions": "Research the topic",
-            "tools": [WebSearchTool()],
-        },
-        {
-            "agent": "analyst",
-            "instructions": "Analyze the findings",
-            "input_from": ["step1"],  # Use results from previous step
+            "tools": ["web_search"]
         },
         {
             "agent": "writer",
-            "instructions": "Write a report",
-            "input_from": ["step1", "step2"],
+            "instructions": "Write content based on research",
+            "input_from": ["step1"]
         }
     ]
 )
 
-# Execute the workflow
+# Execute workflow
 results = agency.execute_workflow(
-    workflow_id=workflow_id,
-    input_data={"topic": "AI safety"}
+    workflow_id=workflow.id,
+    input_data={"topic": "AI Safety"}
 )
-
-# Get workflow status
-status = agency.get_workflow_status(workflow_id)
 ```
 
-### Workflow Features
-- Sequential step execution
-- Input/output chaining between steps
-- Tool assignment per step
-- Progress tracking
-- Result aggregation
-- Error handling
+## Best Practices
 
-## Statistics and Monitoring
+### Agent Design
 
-The agency provides built-in monitoring capabilities:
+1. **Clear Instructions**
+   ```python
+   instructions = """
+   Role: You are a helpful coding assistant
+
+   Guidelines:
+   1. Always write clear, commented code
+   2. Include error handling
+   3. Use type hints
+   4. Follow PEP 8 style
+
+   When using tools:
+   1. Use web_search for current information
+   2. Use calculator for computations
+   """
+   ```
+
+2. **Appropriate Model Selection**
+   ```python
+   # For complex tasks
+   model_id = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+
+   # For simple tasks
+   model_id = "amazon.titan-text-lite-v1"
+   ```
+
+3. **Tool Management**
+   ```python
+   # Add only necessary tools
+   agent.add_tool(WebSearchTool())
+   agent.add_tool(CalculatorTool())
+
+   # Remove unused tools
+   agent.remove_tool("web_search")
+   ```
+
+### Error Handling
 
 ```python
-# Get thread statistics
-thread_stats = agency.get_stats(thread_id)
-print(f"Messages: {thread_stats['messages']}")
-print(f"Tokens: {thread_stats['tokens']}")
+from bedrock_swarm.exceptions import (
+    ModelInvokeError,
+    ToolError,
+    ResponseParsingError
+)
 
-# Get agent statistics
-agent_stats = agency.get_agent_stats(agent_name)
+try:
+    response = agent.process_message(message)
+except ModelInvokeError as e:
+    logger.error(f"Model error: {e}")
+    # Retry with different model
+except ToolError as e:
+    logger.error(f"Tool error: {e}")
+    # Use fallback tool
+except ResponseParsingError as e:
+    logger.error(f"Parsing error: {e}")
+    # Request clarification
 ```
 
-### Monitoring Features
-- Message count tracking
-- Token usage monitoring
-- Per-agent statistics
-- Per-thread statistics
-- Workflow execution tracking
+### Performance Optimization
+
+1. **Token Management**
+   ```python
+   agent = BedrockAgent(
+       max_tokens=1000,     # Limit response length
+       temperature=0.7,     # Balance creativity/consistency
+       top_p=0.9           # Control response diversity
+   )
+   ```
+
+2. **Memory Management**
+   ```python
+   # Clear memory periodically
+   if len(agent.memory.get_messages()) > 100:
+       agent.clear_memory()
+
+   # Use vector memory for large conversations
+   agent.memory = VectorMemory(
+       max_messages=1000,
+       embedding_model="..."
+   )
+   ```
+
+3. **Parallel Processing**
+   ```python
+   # Run agents in parallel
+   async with agency.batch() as batch:
+       task1 = batch.submit(agent1, "Task 1")
+       task2 = batch.submit(agent2, "Task 2")
+
+   results = await asyncio.gather(task1, task2)
+   ```
+
+## Next Steps
+
+1. Try the [Basic Examples](../examples/basic.md)
+2. Explore [Advanced Features](advanced.md)
+3. Read the [API Reference](../api/agents.md)
+4. Join our [Discord Community](https://discord.gg/bedrock-swarm)
