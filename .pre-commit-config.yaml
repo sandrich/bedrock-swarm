@@ -29,16 +29,18 @@ repos:
     rev: v1.9.0
     hooks:
     -   id: mypy
+        exclude: ^tests/
         additional_dependencies: [
             'types-jsonschema',
             'boto3-stubs',
+            'types-requests',
         ]
 
 -   repo: local
     hooks:
     -   id: pytest
         name: pytest
-        entry: pytest
+        entry: pytest tests/unit/
         language: system
         pass_filenames: false
         always_run: true

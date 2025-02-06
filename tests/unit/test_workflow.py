@@ -1,7 +1,7 @@
 """Tests for the workflow module."""
 
-from typing import Any, Dict
-from unittest.mock import MagicMock
+from typing import Any, Dict, Generator, List, Sequence, cast
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,7 +16,7 @@ class MockTool(BaseTool):
 
     def __init__(
         self, name: str = "mock_tool", description: str = "Mock tool for testing"
-    ):
+    ) -> None:
         """Initialize mock tool."""
         self._name = name
         self._description = description
@@ -47,31 +47,33 @@ class MockTool(BaseTool):
             },
         }
 
-    def _execute_impl(self, **kwargs) -> str:
+    def _execute_impl(self, **kwargs: Any) -> str:
         """Execute the mock tool."""
-        return self._execute_mock(**kwargs)
+        return cast(str, self._execute_mock(**kwargs))
 
 
 @pytest.fixture
-def aws_config():
+def aws_config() -> AWSConfig:
     """Create AWS config for testing."""
     return AWSConfig(region="us-west-2", profile="default")
 
 
 @pytest.fixture
-def mock_agent(aws_config):
+def mock_agent(aws_config: AWSConfig) -> Generator[BedrockAgent, None, None]:
     """Create a mock agent."""
     agent = BedrockAgent(
         name="test_agent",
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         aws_config=aws_config,
     )
-    agent.process_message = MagicMock(return_value="Test response")
-    return agent
+    # Mock the process_message method
+    mock_process = MagicMock(return_value="Test response")
+    with patch.object(agent, "process_message", mock_process):
+        yield agent
 
 
 @pytest.fixture
-def basic_workflow(aws_config):
+def basic_workflow(aws_config: AWSConfig) -> Workflow:
     """Create basic workflow for testing."""
     return Workflow(
         name="test_workflow",
@@ -84,7 +86,7 @@ def basic_workflow(aws_config):
     )
 
 
-def test_workflow_step_creation():
+def test_workflow_step_creation() -> None:
     """Test WorkflowStep creation and defaults."""
     # Basic creation
     step = WorkflowStep(agent="test_agent")
@@ -96,7 +98,7 @@ def test_workflow_step_creation():
     assert step.requires is None
 
     # Full creation
-    tools = [MockTool()]
+    tools: List[BaseTool] = [MockTool()]
     step = WorkflowStep(
         agent="test_agent",
         instructions="Test instructions",
@@ -113,7 +115,7 @@ def test_workflow_step_creation():
     assert step.requires == ["agent3"]
 
 
-def test_workflow_validation():
+def test_workflow_validation() -> None:
     """Test workflow validation."""
     # Test duplicate agent names
     with pytest.raises(ValueError, match="Duplicate agent names"):
@@ -156,7 +158,7 @@ def test_workflow_validation():
         )
 
 
-def test_workflow_execution_plan():
+def test_workflow_execution_plan() -> None:
     """Test workflow execution plan generation."""
     workflow = Workflow(
         name="test",
@@ -177,16 +179,16 @@ def test_workflow_execution_plan():
     assert agent_order.index("agent3") < agent_order.index("agent4")
 
 
-def test_workflow_serialization():
+def test_workflow_serialization() -> None:
     """Test workflow serialization/deserialization."""
-    tools = [MockTool("tool1"), MockTool("tool2")]
+    tools: Sequence[BaseTool] = [MockTool("tool1"), MockTool("tool2")]
     original = Workflow(
         name="test",
         steps=[
             WorkflowStep(
                 agent="agent1",
                 instructions="Step 1",
-                tools=tools,
+                tools=cast(List[BaseTool], tools),
                 use_initial_input=True,
             ),
             WorkflowStep(
@@ -230,7 +232,7 @@ def test_workflow_serialization():
         assert orig_step.use_initial_input == recon_step.use_initial_input
 
 
-def test_complex_workflow_execution(aws_config):
+def test_complex_workflow_execution(aws_config: AWSConfig) -> None:
     """Test execution of a complex workflow with dependencies and tools."""
     # Create agents
     agents = {
@@ -251,10 +253,12 @@ def test_complex_workflow_execution(aws_config):
         ),
     }
 
-    # Mock responses
-    agents["researcher"].process_message = MagicMock(return_value="Research findings")
-    agents["analyst"].process_message = MagicMock(return_value="Analysis results")
-    agents["writer"].process_message = MagicMock(return_value="Final report")
+    # Set up mock responses for each agent
+    mock_responses = {}
+    for agent_name, agent in agents.items():
+        mock_process = MagicMock(return_value="Test streaming response")
+        mock_responses[agent_name] = mock_process
+        agent.process_message = mock_process
 
     # Create workflow
     workflow = Workflow(
@@ -263,7 +267,7 @@ def test_complex_workflow_execution(aws_config):
             WorkflowStep(
                 agent="researcher",
                 instructions="Research the topic",
-                tools=[MockTool("search_tool")],
+                tools=cast(List[BaseTool], [MockTool("search_tool")]),
             ),
             WorkflowStep(
                 agent="analyst",
@@ -287,37 +291,39 @@ def test_complex_workflow_execution(aws_config):
     results = workflow.execute({"input": "Research AI advancements"})
 
     # Verify results
-    assert results["researcher"] == "Research findings"
-    assert results["analyst"] == "Analysis results"
-    assert results["writer"] == "Final report"
+    assert results["researcher"] == "Test streaming response"
+    assert results["analyst"] == "Test streaming response"
+    assert results["writer"] == "Test streaming response"
 
-    # Print actual messages for debugging
-    print("\nActual messages:")
-    for call in agents["researcher"].process_message.call_args_list:
-        print("Researcher:", repr(call[0][0]))
-    for call in agents["analyst"].process_message.call_args_list:
-        print("Analyst:", repr(call[0][0]))
-    for call in agents["writer"].process_message.call_args_list:
-        print("Writer:", repr(call[0][0]))
+    # Get the steps for verification
+    researcher_step = workflow.get_step("researcher")
+    assert researcher_step is not None
 
     # Verify message passing
-    agents["researcher"].process_message.assert_called_once_with(
-        "Research the topic\n\nInput: Research AI advancements",
-        workflow.get_step("researcher").tools,
-    )
+    for agent_name, agent in agents.items():
+        mock_process = mock_responses[agent_name]
+        if agent_name == "researcher":
+            mock_process.assert_called_once_with(
+                "Research the topic\n\nInput: Research AI advancements",
+                (
+                    [researcher_step.tools[0].get_schema()]
+                    if researcher_step.tools
+                    else None
+                ),
+            )
+        elif agent_name == "analyst":
+            mock_process.assert_called_once_with(
+                "Analyze the research\n\nInput: Research AI advancements\n\nresearcher result: Test streaming response",
+                None,
+            )
+        elif agent_name == "writer":
+            mock_process.assert_called_once_with(
+                "Write report\n\nInput: Research AI advancements\n\nresearcher result: Test streaming response\n\nanalyst result: Test streaming response",
+                None,
+            )
 
-    agents["analyst"].process_message.assert_called_once_with(
-        "Analyze the research\n\nInput: Research AI advancements\n\nresearcher result: Research findings",
-        None,
-    )
 
-    agents["writer"].process_message.assert_called_once_with(
-        "Write report\n\nInput: Research AI advancements\n\nresearcher result: Research findings\n\nanalyst result: Analysis results",
-        None,
-    )
-
-
-def test_workflow_step_management(basic_workflow):
+def test_workflow_step_management(basic_workflow: Workflow) -> None:
     """Test step management operations."""
     # Add step
     new_step = WorkflowStep(

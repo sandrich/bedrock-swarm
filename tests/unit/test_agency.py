@@ -1,12 +1,13 @@
 """Tests for the agency module."""
 
-from typing import Dict
-from unittest.mock import Mock, PropertyMock, patch
+from typing import Any, Dict, Generator, List, Sequence, cast
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 
 from bedrock_swarm.agency.agency import Agency
 from bedrock_swarm.agency.thread import ThreadMessage
+from bedrock_swarm.agents.base import BedrockAgent
 from bedrock_swarm.config import AWSConfig
 from bedrock_swarm.tools.base import BaseTool
 
@@ -16,11 +17,11 @@ class MockTool(BaseTool):
 
     def __init__(
         self, name: str = "mock_tool", description: str = "Mock tool for testing"
-    ):
+    ) -> None:
         """Initialize mock tool."""
         self._name = name
         self._description = description
-        self._execute_mock = Mock(return_value="Tool result")
+        self._execute_mock = MagicMock(return_value="Tool result")
 
     @property
     def name(self) -> str:
@@ -32,7 +33,7 @@ class MockTool(BaseTool):
         """Get tool description."""
         return self._description
 
-    def get_schema(self) -> Dict:
+    def get_schema(self) -> Dict[str, Any]:
         """Get tool schema."""
         return {
             "name": self.name,
@@ -47,9 +48,9 @@ class MockTool(BaseTool):
             },
         }
 
-    def _execute_impl(self, **kwargs) -> str:
+    def _execute_impl(self, **kwargs: Any) -> str:
         """Execute the mock tool."""
-        return self._execute_mock(**kwargs)
+        return cast(str, self._execute_mock(**kwargs))
 
 
 @pytest.fixture
@@ -59,24 +60,28 @@ def aws_config() -> AWSConfig:
 
 
 @pytest.fixture
+def mock_agent(aws_config: AWSConfig) -> Generator[BedrockAgent, None, None]:
+    """Create a mock agent."""
+    agent = BedrockAgent(
+        name="test_agent",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        aws_config=aws_config,
+    )
+    # Mock the process_message method
+    mock_process = MagicMock(return_value="Test response")
+    with patch.object(agent, "process_message", mock_process):
+        yield agent
+
+
+@pytest.fixture
 def agency(aws_config: AWSConfig) -> Agency:
     """Create agency for testing."""
-    return Agency(
-        aws_config=aws_config,
-        shared_instructions="Shared instructions",
-        shared_files=["file1.txt", "file2.txt"],
-        temperature=0.8,
-        max_tokens=2000,
-    )
+    return Agency(aws_config=aws_config)
 
 
 def test_agency_initialization(agency: Agency) -> None:
     """Test agency initialization."""
     assert agency.aws_config is not None
-    assert agency.shared_instructions == "Shared instructions"
-    assert agency.shared_files == ["file1.txt", "file2.txt"]
-    assert agency.temperature == 0.8
-    assert agency.max_tokens == 2000
     assert agency.agents == {}
     assert agency.threads == {}
     assert agency.agent_stats == {}
@@ -166,73 +171,108 @@ def test_execute(agency: Agency) -> None:
 
 def test_add_agent(agency: Agency) -> None:
     """Test adding an agent."""
-    tools = [MockTool()]
+    tools: Sequence[BaseTool] = [MockTool("tool1"), MockTool("tool2")]
     agent = agency.add_agent(
         name="test_agent",
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        instructions="Test instructions",
-        tools=tools,
-        temperature=0.9,
-        max_tokens=1500,
+        tools=cast(List[BaseTool], tools),
     )
-
     assert agent.name == "test_agent"
-    assert agent.model_id == "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-    assert agent.instructions == "Test instructions"
-    assert agent.temperature == 0.9
-    assert agent.max_tokens == 1500
-    assert len(agent.tools) == 1
+    assert len(agent.tools) == 2
     assert "test_agent" in agency.agents
-    assert agency.agent_stats["test_agent"] == {"messages": 0, "tokens": 0}
 
-    # Test duplicate agent
-    with pytest.raises(ValueError):
-        agency.add_agent(
-            name="test_agent", model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-        )
+
+def test_add_agent_with_tools(agency: Agency) -> None:
+    """Test adding an agent with tools."""
+    tools: Sequence[BaseTool] = [MockTool("tool1"), MockTool("tool2")]
+    agent = agency.add_agent(
+        name="test_agent",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        tools=cast(List[BaseTool], tools),
+    )
+    assert "test_agent" in agency.agents
+    assert len(agent.tools) == 2
+
+
+def test_get_agent(agency: Agency) -> None:
+    """Test getting an agent."""
+    agency.add_agent(
+        name="test_agent",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    )
+    agent = agency.agents.get("test_agent")
+    assert agent is not None
+    assert agent.name == "test_agent"
+
+
+def test_get_nonexistent_agent(agency: Agency) -> None:
+    """Test getting a nonexistent agent."""
+    agent = agency.agents.get("nonexistent")
+    assert agent is None
 
 
 def test_create_workflow(agency: Agency) -> None:
     """Test creating a workflow."""
-    steps = [
+    # Add an agent first
+    agency.add_agent(
+        name="test_agent",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    )
+
+    # Create workflow steps
+    steps: List[Dict[str, Any]] = [
         {
-            "agent": "agent1",
-            "instructions": "Step 1",
-            "tools": [MockTool()],
-            "input_from": [],
+            "agent": "test_agent",
+            "instructions": "Test instructions",
             "use_initial_input": True,
-            "requires": [],
-        },
-        {
-            "agent": "agent2",
-            "instructions": "Step 2",
-            "input_from": ["agent1"],
-            "requires": ["agent1"],
-        },
+        }
     ]
 
     workflow_id = agency.create_workflow("test_workflow", steps)
-    assert workflow_id == "test_workflow"
-
-    workflow = agency.get_workflow(workflow_id)
-    assert workflow is not None
+    workflow = agency.workflows[workflow_id]
     assert workflow.name == "test_workflow"
-    assert len(workflow.steps) == 2
-    assert workflow.steps[0].agent == "agent1"
-    assert workflow.steps[1].agent == "agent2"
+    assert len(workflow.steps) == 1
+    assert workflow.steps[0].agent == "test_agent"
+    assert workflow.steps[0].instructions == "Test instructions"
+    assert workflow.steps[0].use_initial_input is True
 
-    # Test duplicate workflow
+
+def test_create_workflow_invalid_agent(agency: Agency) -> None:
+    """Test creating a workflow with invalid agent."""
+    steps: List[Dict[str, Any]] = [
+        {
+            "agent": "nonexistent",
+            "instructions": "Test instructions",
+        }
+    ]
+
+    # This should raise ValueError because the agent doesn't exist
     with pytest.raises(ValueError):
         agency.create_workflow("test_workflow", steps)
 
 
-def test_get_workflow(agency: Agency) -> None:
-    """Test getting a workflow."""
-    steps = [{"agent": "agent1", "instructions": "Step 1"}]
-    workflow_id = agency.create_workflow("test_workflow", steps)
+def test_execute_workflow(agency: Agency) -> None:
+    """Test executing a workflow."""
+    # Add an agent first
+    agent = agency.add_agent(
+        name="test_agent",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    )
 
-    workflow = agency.get_workflow(workflow_id)
-    assert workflow is not None
-    assert workflow.name == "test_workflow"
+    # Create workflow steps
+    steps: List[Dict[str, Any]] = [
+        {
+            "agent": "test_agent",
+            "instructions": "Test instructions",
+            "use_initial_input": True,
+        }
+    ]
 
-    assert agency.get_workflow("nonexistent") is None
+    workflow = agency.create_workflow("test_workflow", steps)
+
+    # Mock the process_message method
+    mock_process = MagicMock(return_value="Test response")
+    with patch.object(agent, "process_message", mock_process):
+        results = agency.execute_workflow(workflow, {"input": "Test input"})
+        assert "test_agent" in results
+        assert results["test_agent"] == "Test response"

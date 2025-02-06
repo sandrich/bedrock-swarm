@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from bedrock_swarm.memory.base import Message, SimpleMemory
 
 
-def test_message_creation():
+def test_message_creation() -> None:
     """Test message creation."""
     timestamp = datetime.now()
     metadata = {"key": "value"}
@@ -18,7 +18,7 @@ def test_message_creation():
     assert message.metadata == metadata
 
 
-def test_simple_memory_initialization():
+def test_simple_memory_initialization() -> None:
     """Test simple memory initialization."""
     memory = SimpleMemory()
     assert memory.get_messages() == []
@@ -28,7 +28,7 @@ def test_simple_memory_initialization():
     assert memory.get_messages() == []
 
 
-def test_add_message():
+def test_add_message() -> None:
     """Test adding a message."""
     memory = SimpleMemory()
     message = Message(
@@ -42,7 +42,7 @@ def test_add_message():
     assert messages[0] == message
 
 
-def test_max_size_limit():
+def test_max_size_limit() -> None:
     """Test max size limit enforcement."""
     memory = SimpleMemory(max_size=2)
 
@@ -60,7 +60,7 @@ def test_max_size_limit():
     assert stored_messages == messages[-2:]
 
 
-def test_get_messages_filtering():
+def test_get_messages_filtering() -> None:
     """Test message filtering options."""
     memory = SimpleMemory()
 
@@ -96,7 +96,7 @@ def test_get_messages_filtering():
     assert all(msg.role == "assistant" for msg in assistant_messages)
 
 
-def test_clear():
+def test_clear() -> None:
     """Test clearing messages."""
     memory = SimpleMemory()
     message = Message(
@@ -111,7 +111,7 @@ def test_clear():
     assert len(memory.get_messages()) == 0
 
 
-def test_get_messages():
+def test_get_messages() -> None:
     """Test getting messages."""
     memory = SimpleMemory()
     message1 = Message(
@@ -132,7 +132,7 @@ def test_get_messages():
     assert messages[1] == message2
 
 
-def test_get_last_message():
+def test_get_last_message() -> None:
     """Test getting last message."""
     memory = SimpleMemory()
     message1 = Message(
@@ -151,13 +151,13 @@ def test_get_last_message():
     assert last_message == message2
 
 
-def test_get_last_message_empty():
+def test_get_last_message_empty() -> None:
     """Test getting last message from empty memory."""
     memory = SimpleMemory()
     assert memory.get_last_message() is None
 
 
-def test_get_messages_by_role():
+def test_get_messages_by_role() -> None:
     """Test getting messages by role."""
     memory = SimpleMemory()
     user_message = Message(

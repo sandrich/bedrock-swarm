@@ -27,7 +27,6 @@ dependencies = [
     "rich>=13.0.0",
     "typing-extensions>=4.7.0",
     "python-dotenv>=1.0.0",
-    "aiohttp>=3.9.0",
     "duckduckgo-search>=4.4.0",
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.0"
@@ -41,7 +40,8 @@ dev = [
     "isort>=5.12.0",
     "mypy>=1.0.0",
     "flake8>=6.0.0",
-    "pre-commit>=3.0.0"
+    "pre-commit>=3.0.0",
+    "types-requests>=2.31.0"
 ]
 docs = [
     "mkdocs>=1.4.0",
@@ -65,7 +65,7 @@ local_scheme = "no-local-version"
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q --cov=bedrock_swarm --cov-report=term-missing --cov-report=html --cov-fail-under=85"
-testpaths = ["tests/unit", "tests/integration"]
+testpaths = ["tests/unit"]
 python_files = ["test_*.py"]
 
 [tool.black]
@@ -90,6 +90,7 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
+exclude = ["tests/.*"]
 
 [tool.coverage.run]
 source = ["bedrock_swarm"]

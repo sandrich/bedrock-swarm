@@ -1,34 +1,13 @@
 """Core Agency implementation for orchestrating multi-agent systems."""
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-from uuid import uuid4
+from typing import Any, Dict, List, Optional, cast
 
 from ..agents.base import BedrockAgent
+from ..config import AWSConfig
 from ..tools.base import BaseTool
 from ..types import ToolCallResult
 from .thread import Thread, ThreadMessage
-
-
-@dataclass
-class WorkflowStep:
-    """A step in a workflow."""
-
-    id: str = field(default_factory=lambda: str(uuid4()))
-    agent: str = ""
-    instructions: str = ""
-    tools: List[BaseTool] = field(default_factory=list)
-    input_from: List[str] = field(default_factory=list)
-    use_initial_input: bool = True
-    requires: List[str] = field(default_factory=list)
-
-
-@dataclass
-class Workflow:
-    """A workflow of steps to be executed."""
-
-    name: str
-    steps: List[WorkflowStep]
+from .workflow import Workflow, WorkflowStep
 
 
 class Agency:
@@ -36,7 +15,7 @@ class Agency:
 
     def __init__(
         self,
-        aws_config,
+        aws_config: AWSConfig,
         shared_instructions: Optional[str] = None,
         shared_files: Optional[List[str]] = None,
         temperature: float = 0.7,
@@ -46,10 +25,10 @@ class Agency:
 
         Args:
             aws_config: AWS configuration for Bedrock
-            shared_instructions (Optional[str]): Instructions shared by all agents
-            shared_files (Optional[List[str]]): Files shared by all agents
-            temperature (float): Default temperature for agents
-            max_tokens (int): Default max tokens for agents
+            shared_instructions: Instructions shared by all agents
+            shared_files: Files shared by all agents
+            temperature: Default temperature for agents
+            max_tokens: Default max tokens for agents
         """
         self.aws_config = aws_config
         self.shared_instructions = shared_instructions
@@ -59,7 +38,7 @@ class Agency:
 
         self.agents: Dict[str, BedrockAgent] = {}
         self.threads: Dict[str, Thread] = {}
-        self.agent_stats: Dict[str, Dict[str, Any]] = {}
+        self.agent_stats: Dict[str, Dict[str, int]] = {}
         self.workflows: Dict[str, Workflow] = {}
         self.active_workflows: Dict[str, Dict[str, Any]] = {}
         self.shared_state: Dict[str, Any] = {}
@@ -68,7 +47,7 @@ class Agency:
         """Create a new thread.
 
         Args:
-            agent_name (Optional[str]): Name of the agent to use for this thread
+            agent_name: Name of the agent to use for this thread
 
         Returns:
             Thread: The newly created thread
@@ -83,7 +62,7 @@ class Agency:
         """Get a thread by ID.
 
         Args:
-            thread_id (str): ID of the thread to get
+            thread_id: ID of the thread to get
 
         Returns:
             Optional[Thread]: The thread if found, None otherwise
@@ -94,8 +73,8 @@ class Agency:
         """Update usage statistics for a thread.
 
         Args:
-            thread_id (str): ID of the thread
-            tokens (int): Number of tokens used
+            thread_id: ID of the thread
+            tokens: Number of tokens used
         """
         if thread_id not in self.agent_stats:
             self.agent_stats[thread_id] = {"messages": 0, "tokens": 0}
@@ -106,7 +85,7 @@ class Agency:
         """Get usage statistics for a thread.
 
         Args:
-            thread_id (str): ID of the thread
+            thread_id: ID of the thread
 
         Returns:
             Dict[str, int]: Usage statistics
@@ -122,9 +101,9 @@ class Agency:
         """Execute a message in a thread.
 
         Args:
-            thread_id (str): ID of the thread to execute in
-            message (str): Message to execute
-            tool_results (Optional[List[ToolCallResult]]): Results from previous tool calls
+            thread_id: ID of the thread to execute in
+            message: Message to execute
+            tool_results: Results from previous tool calls
 
         Returns:
             ThreadMessage: Response message from the agent
@@ -192,24 +171,30 @@ class Agency:
         """Create a new workflow.
 
         Args:
-            name (str): Name of the workflow
-            steps (List[Dict[str, Any]]): List of workflow steps
+            name: Name of the workflow
+            steps: List of workflow step configurations
 
         Returns:
             str: ID of the created workflow
 
         Raises:
-            ValueError: If a workflow with the same name already exists
+            ValueError: If a workflow with the same name exists or if an agent doesn't exist
         """
         if name in self.workflows:
             raise ValueError(f"Workflow '{name}' already exists")
 
-        workflow_steps = []
+        # Validate that all agents exist
+        for step_data in steps:
+            agent_name = step_data["agent"]
+            if agent_name not in self.agents:
+                raise ValueError(f"Agent '{agent_name}' not found")
+
+        workflow_steps: List[WorkflowStep] = []
         for step_data in steps:
             step = WorkflowStep(
                 agent=step_data["agent"],
                 instructions=step_data.get("instructions", ""),
-                tools=step_data.get("tools", []),
+                tools=cast(Optional[List[BaseTool]], step_data.get("tools")),
                 input_from=step_data.get("input_from", []),
                 use_initial_input=step_data.get("use_initial_input", True),
                 requires=step_data.get("requires", []),
@@ -237,8 +222,8 @@ class Agency:
         """Execute a workflow.
 
         Args:
-            workflow_id (str): ID of the workflow to execute
-            input_data (Dict[str, Any]): Input data for the workflow
+            workflow_id: ID of the workflow to execute
+            input_data: Input data for the workflow
 
         Returns:
             Dict[str, str]: Results of the workflow execution, keyed by agent name
@@ -250,9 +235,8 @@ class Agency:
         if not workflow:
             raise ValueError(f"Workflow '{workflow_id}' does not exist")
 
-        results = {}
-        step_results = {}
-        threads = {}
+        results: Dict[str, str] = {}
+        threads: Dict[str, Thread] = {}
 
         for step in workflow.steps:
             agent = self.agents.get(step.agent)
@@ -261,21 +245,27 @@ class Agency:
 
             # Create thread for this step
             thread = self.create_thread(step.agent)
-            threads[step.id] = thread
+            threads[step.agent] = thread
 
             # Prepare input message
-            message = step.instructions + "\n\n"
+            message_parts = []
+            if step.instructions:
+                message_parts.append(step.instructions)
+
             if step.use_initial_input:
-                message += f"Input data: {input_data}\n\n"
+                message_parts.append(f"Input data: {input_data}")
 
             # Add results from dependent steps
-            for dep_id in step.input_from:
-                if dep_id in step_results:
-                    message += f"Results from step {dep_id}: {step_results[dep_id]}\n\n"
+            if step.input_from:
+                for dep_agent in step.input_from:
+                    if dep_agent in results:
+                        message_parts.append(
+                            f"Results from {dep_agent}: {results[dep_agent]}"
+                        )
 
             # Execute step
-            response = thread.execute(agent, message)
-            step_results[step.id] = response.content
+            message = "\n\n".join(message_parts)
+            response = thread.execute(message)
             results[step.agent] = response.content
 
         return results

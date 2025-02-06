@@ -1,7 +1,7 @@
 """Claude model implementation."""
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from botocore.client import BaseClient
 from botocore.exceptions import ClientError
@@ -14,7 +14,7 @@ from .base import BedrockModel
 class Claude35Model(BedrockModel):
     """Implementation for Claude 3.5 models."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the model."""
         super().__init__()
 
@@ -72,12 +72,12 @@ class Claude35Model(BedrockModel):
             system=system,
             tools=tools,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_tokens=max_tokens or self.get_default_max_tokens(),
         )
 
         try:
             # Invoke model with streaming
-            response = client.invoke_model_with_response_stream(
+            response = client.invoke_model_with_response_stream(  # type: ignore[attr-defined]
                 modelId="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
                 body=json.dumps(request),
             )
@@ -169,14 +169,14 @@ class Claude35Model(BedrockModel):
     def parse_response(self, response: Dict[str, Any]) -> str:
         """Parse a response from the model."""
         try:
-            return response.get("completion", "").strip()
+            return cast(str, response.get("completion", "")).strip()
         except Exception as e:
             raise ResponseParsingError(f"Error parsing response: {str(e)}")
 
     def parse_stream_chunk(self, chunk: Dict[str, Any]) -> Optional[str]:
         """Parse a streaming chunk from Claude 3.5."""
         if chunk.get("type") == "content_block_delta":
-            return chunk.get("delta", {}).get("text", "")
+            return cast(str, chunk.get("delta", {}).get("text", ""))
         return None
 
     # Removed parse_tool_calls since it's now in the base class

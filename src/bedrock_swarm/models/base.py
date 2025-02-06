@@ -17,7 +17,7 @@ class BedrockModel(ABC):
     parsing, and tool/function call handling.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the model."""
         self.last_token_count = 0
 

@@ -1,8 +1,8 @@
 """Tests for the Claude model implementation."""
 
 import json
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from typing import Any, Dict, List, cast
+from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
@@ -21,7 +21,7 @@ class MockTool(BaseTool):
 
     def __init__(
         self, name: str = "mock_tool", description: str = "Mock tool for testing"
-    ):
+    ) -> None:
         """Initialize mock tool."""
         self._name = name
         self._description = description
@@ -54,7 +54,7 @@ class MockTool(BaseTool):
 
     def _execute_impl(self, **kwargs: Any) -> str:
         """Execute the mock tool."""
-        return self._execute_mock(**kwargs)
+        return cast(str, self._execute_mock(**kwargs))
 
 
 @pytest.fixture
@@ -121,7 +121,7 @@ def test_format_request(model: Claude35Model) -> None:
     assert "Test message" in request["messages"][0]["content"]
 
     # Test request with tools
-    tools = [
+    tools: List[Dict[str, Any]] = [
         {
             "name": "test_tool",
             "description": "Test tool",
@@ -193,7 +193,7 @@ def test_process_message_with_tools(
 
     # Create tool and tool map
     tool = MockTool()
-    tool_map = {tool.name: tool}
+    tool_map: Dict[str, BaseTool] = {tool.name: tool}
 
     response = model.process_message(
         client=mock_client,
@@ -254,7 +254,7 @@ def test_process_message_error_chunk(
                         "bytes": json.dumps(
                             {
                                 "type": "error",
-                                "message": "Model error",
+                                "message": "Test error",
                             }
                         ).encode()
                     }
@@ -264,7 +264,7 @@ def test_process_message_error_chunk(
     )
     mock_client.invoke_model_with_response_stream.return_value = {"body": mock_stream}
 
-    with pytest.raises(ModelInvokeError, match="Model error"):
+    with pytest.raises(ModelInvokeError, match="Test error"):
         model.process_message(
             client=mock_client,
             message="Test message",
@@ -279,7 +279,7 @@ def test_process_message_tool_error(
     # Create tool that raises error
     error_tool = MockTool(name="error_tool")
     error_tool._execute_mock.side_effect = Exception("Tool execution failed")
-    tool_map = {"error_tool": error_tool}
+    tool_map: Dict[str, BaseTool] = {"error_tool": error_tool}
 
     # Set up response with tool call
     mock_stream = MagicMock()

@@ -1,6 +1,6 @@
 """Web search tool."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import requests
 from bs4 import BeautifulSoup
@@ -77,34 +77,35 @@ class WebSearchTool(BaseTool):
             content = soup.find("body") or soup
 
             # Basic text extraction with minimal cleaning
-            text = content.get_text(separator="\n", strip=True)
+            text = str(content.get_text(separator="\n", strip=True))
 
             # Only truncate if extremely long to prevent memory issues
             # Let the consumer handle more specific truncation
-            if (
-                len(text) > 10000
-            ):  # Allow more content, let consumer decide how much they want
+            if len(text) > 10000:
                 return text[:10000] + "... (content truncated)"
 
             return text
 
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching content from {url}: {str(e)}")
             return f"Error fetching content: {str(e)}"
 
     def _execute_impl(self, **kwargs: Any) -> str:
-        """Execute the web search."""
+        """Execute the web search.
+
+        Returns:
+            str: Formatted search results as a string
+        """
         query = kwargs["query"]
         num_results = kwargs.get("num_results", 3)
 
         try:
-            results = self.ddgs.text(query, max_results=num_results)
+            results = list(self.ddgs.text(query, max_results=num_results))
 
             print("\nRaw search results:")
             for r in results:
                 print(f"Raw result: {r}")
 
-            formatted_results = ["Search Results:", "-" * 50]  # Single header
+            formatted_results: List[str] = ["Search Results:", "-" * 50]
 
             for result in results:
                 title = result.get("title", "No title")
@@ -134,5 +135,4 @@ class WebSearchTool(BaseTool):
             return "\n".join(formatted_results)
 
         except Exception as e:
-            print(f"Search error: {str(e)}")
             return f"Error performing web search: {str(e)}"

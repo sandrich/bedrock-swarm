@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 
+from ..agents.base import BedrockAgent
 from ..tools.base import BaseTool
 
 
@@ -42,7 +43,7 @@ class Workflow:
         """
         self.name = name
         self.steps = steps
-        self.agents = {}  # Dict to store agent instances
+        self.agents: Dict[str, BedrockAgent] = {}  # Dict to store agent instances
         self.validate_workflow()
 
     def validate_workflow(self) -> None:
@@ -273,18 +274,22 @@ class Workflow:
         return cls(name=data["name"], steps=steps)
 
     def execute(self, input_data: Dict[str, Any]) -> Dict[str, str]:
-        """Execute the workflow with the given input.
+        """Execute the workflow.
 
         Args:
-            input_data (Dict[str, Any]): Input data for the workflow
+            input_data: Initial input data for workflow
 
         Returns:
-            Dict[str, str]: Results from each agent
+            Dict mapping agent names to their outputs
         """
-        results = {}
-        execution_plan = self.get_execution_plan()
+        # Get execution plan
+        plan = self.get_execution_plan()
 
-        for step in execution_plan:
+        # Track results for each step
+        step_results: Dict[str, str] = {}
+
+        # Execute steps in order
+        for step in plan:
             agent = self.agents.get(step.agent)
             if not agent:
                 raise ValueError(f"Agent {step.agent} not found")
@@ -303,18 +308,19 @@ class Workflow:
             # Add results from previous steps if requested
             if step.input_from:
                 for prev_agent in step.input_from:
-                    if prev_agent in results:
+                    if prev_agent in step_results:
                         message_parts.append(
-                            f"{prev_agent} result: {results[prev_agent]}"
+                            f"{prev_agent} result: {step_results[prev_agent]}"
                         )
 
             # Build message with correct newlines
-            message = message_parts[0]
-            for part in message_parts[1:]:
-                message += "\n\n" + part
+            message = "\n\n".join(message_parts)
 
-            # Execute the step with tools if present
-            response = agent.process_message(message, step.tools)
-            results[step.agent] = response
+            # Execute step
+            response = agent.process_message(
+                message,
+                [tool.get_schema() for tool in step.tools] if step.tools else None,
+            )
+            step_results[step.agent] = response
 
-        return results
+        return step_results
