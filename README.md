@@ -9,7 +9,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 <div align="center">
-  <img src="docs/assets/logo.png" alt="Bedrock Swarm Logo" width="400"/>
+  <img src="https://raw.githubusercontent.com/sandrich/bedrock-swarm/main/docs/assets/logo.png" alt="Bedrock Swarm Logo" width="400"/>
 </div>
 
 A powerful framework for building multi-agent systems using AWS Bedrock. Create, manage, and orchestrate AI agents powered by state-of-the-art language models.
@@ -133,74 +133,3 @@ tokyo_date = time_tool.execute(
     format="%A, %B %d, %Y"
 )  # Returns: "Thursday, March 14, 2024"
 ```
-
-## 🔧 Creating Custom Tools
-
-You can create your own tools by extending the `BaseTool` class:
-
-```python
-from typing import Any, Dict
-from bedrock_swarm.tools.base import BaseTool
-
-class MyCustomTool(BaseTool):
-    @property
-    def name(self) -> str:
-        return "my_tool"
-
-    @property
-    def description(self) -> str:
-        return "Description of my tool"
-
-    def get_schema(self) -> Dict[str, Any]:
-        return {
-            "name": self.name,
-            "description": self.description,
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                },
-                "required": ["param1"]
-            }
-        }
-
-    def _execute_impl(self, **kwargs: Any) -> str:
-        # Implement your tool logic here
-        return f"Tool executed with {kwargs}"
-```
-
-## 📖 Documentation
-
-Visit our [documentation](https://bedrock-swarm.readthedocs.io/) for:
-
-- [Installation Guide](https://bedrock-swarm.readthedocs.io/en/latest/getting-started/installation/)
-- [Quick Start Guide](https://bedrock-swarm.readthedocs.io/en/latest/getting-started/quickstart/)
-- [Core Concepts](https://bedrock-swarm.readthedocs.io/en/latest/user-guide/core-concepts/)
-- [API Reference](https://bedrock-swarm.readthedocs.io/en/latest/api/agents/)
-- [Examples](https://bedrock-swarm.readthedocs.io/en/latest/examples/basic/)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📬 Contact
-
-- GitHub Issues: [github.com/sandrich/bedrock-swarm/issues](https://github.com/sandrich/bedrock-swarm/issues)
-- Documentation: [bedrock-swarm.readthedocs.io](https://bedrock-swarm.readthedocs.io)
-
-## Logging
-
-Bedrock Swarm includes built-in logging capabilities to help you monitor and debug your applications. By default, logging is set to WARNING level.
-
-```python
-from bedrock_swarm import configure_logging
-
-# Enable debug logging
-configure_logging(level="DEBUG")
-```
-
-For detailed information about logging configuration and best practices, see the [Logging Guide](docs/user-guide/logging.md).
