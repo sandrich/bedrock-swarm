@@ -1,14 +1,14 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "bedrock-swarm"
+version = "0.1.5"
 description = "A framework for building multi-agent systems using AWS Bedrock"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
-dynamic = ["version"]
 authors = [
     {name = "Chris Sandrini", email = "mail@chrissandrini.ch"}
 ]
@@ -54,11 +54,6 @@ packages = ["bedrock_swarm"]
 
 [tool.setuptools.package-data]
 bedrock_swarm = ["py.typed"]
-
-[tool.setuptools_scm]
-write_to = "src/bedrock_swarm/_version.py"
-local_scheme = "no-local-version"
-tag_regex = "^v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)$"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
