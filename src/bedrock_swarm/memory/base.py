@@ -123,6 +123,26 @@ class SimpleMemory(BaseMemory):
 
         return messages
 
+    def get_last_message(self) -> Optional[Message]:
+        """Get the most recent message.
+
+        Returns:
+            Optional[Message]: The most recent message, or None if no messages exist
+        """
+        messages = self.get_messages(limit=1)
+        return messages[0] if messages else None
+
+    def get_messages_by_role(self, role: str) -> List[Message]:
+        """Get all messages with a specific role.
+
+        Args:
+            role (str): Role to filter by (e.g., "human", "assistant", "system")
+
+        Returns:
+            List[Message]: List of messages with the specified role
+        """
+        return self.get_messages(role=role)
+
     def clear(self) -> None:
         """Clear all messages from memory."""
         self._messages.clear()

@@ -37,11 +37,6 @@ The following model families and versions are supported:
 
 - Anthropic Claude 3.5:
   - `us.anthropic.claude-3-5-sonnet-20241022-v2:0`
-- Anthropic Claude:
-  - `anthropic.claude-v1`
-  - `anthropic.claude-v2`
-  - `anthropic.claude-v2:1`
-  - `anthropic.claude-instant-v1`
 - Amazon Titan:
   - `amazon.titan-text-express-v1`
   - `amazon.titan-text-lite-v1`

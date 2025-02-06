@@ -177,11 +177,8 @@ agent.memory.clear()
 
 The following AWS Bedrock models are supported:
 
-### Anthropic Claude
-- `anthropic.claude-v1`
-- `anthropic.claude-v2`
-- `anthropic.claude-v2:1`
-- `anthropic.claude-instant-v1`
+### Anthropic Claude 3.5
+- `us.anthropic.claude-3-5-sonnet-20241022-v2:0`
 
 ### Amazon Titan
 - `amazon.titan-text-express-v1`
@@ -205,7 +202,7 @@ from bedrock_swarm.config import AWSConfig
 # Create agent
 agent = BedrockAgent(
     name="assistant",
-    model_id="anthropic.claude-v2",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
     aws_config=AWSConfig(region="us-west-2"),
     instructions="You are a helpful AI assistant.",
     temperature=0.7,
@@ -216,25 +213,6 @@ agent = BedrockAgent(
 response = agent.process_message("Hello!")
 ```
 
-### With Tools
-
-```python
-# Add built-in tool
-agent.add_tool("WebSearchTool")
-
-# Add custom tool
-from bedrock_swarm.tools import BaseTool
-
-class CustomTool(BaseTool):
-    name = "custom_tool"
-    description = "Custom tool description"
-
-    def execute(self, **kwargs):
-        return "Result"
-
-agent.add_tool(CustomTool())
-```
-
 ### With Memory
 
 ```python
@@ -243,14 +221,10 @@ from bedrock_swarm.memory import SimpleMemory
 # Create agent with memory
 agent = BedrockAgent(
     name="assistant",
-    model_id="anthropic.claude-v2",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
     aws_config=config,
     memory=SimpleMemory()
 )
-
-# Process messages
-agent.process_message("Hello!")
-messages = agent.memory.get_messages()
 ```
 
 ### Error Handling

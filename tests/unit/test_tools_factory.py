@@ -12,14 +12,23 @@ from bedrock_swarm.tools.factory import ToolFactory
 class MockTool(BaseTool):
     """Mock tool for testing."""
 
-    def __init__(self, name="mock_tool"):
+    def __init__(
+        self, name: str = "mock_tool", description: str = "Mock tool for testing"
+    ):
         """Initialize mock tool."""
-        super().__init__(name=name)
+        self._name = name
+        self._description = description
         self._execute_mock = MagicMock(return_value="Tool result")
 
-    def execute(self, **kwargs):
-        """Execute the tool."""
-        return self._execute_mock(**kwargs)
+    @property
+    def name(self) -> str:
+        """Get tool name."""
+        return self._name
+
+    @property
+    def description(self) -> str:
+        """Get tool description."""
+        return self._description
 
     def get_schema(self):
         """Get tool schema."""
@@ -35,6 +44,18 @@ class MockTool(BaseTool):
                 "required": ["param1"],
             },
         }
+
+    def _execute_impl(self, **kwargs):
+        """Execute the mock tool."""
+        return self._execute_mock(**kwargs)
+
+
+@pytest.fixture(autouse=True)
+def clear_registry():
+    """Clear tool registry before and after each test."""
+    ToolFactory.clear()
+    yield
+    ToolFactory.clear()
 
 
 def test_register_tool_type():

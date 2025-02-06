@@ -137,12 +137,18 @@ class Swarm:
 
         return responses
 
-    def process_message(self, agent_id: str, message: str) -> str:
+    def process_message(
+        self,
+        agent_id: str,
+        message: str,
+        tool_results: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
         """Process a message through a specific agent.
 
         Args:
             agent_id (str): ID of the agent to process the message
             message (str): Message to process
+            tool_results (Optional[List[Dict[str, Any]]]): Optional results from tool executions
 
         Returns:
             str: Agent's response
@@ -151,4 +157,4 @@ class Swarm:
             KeyError: If agent is not found
         """
         agent = self.get_agent(agent_id)
-        return agent.process_message(message)
+        return agent.process_message(message, tool_results=tool_results)

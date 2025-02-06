@@ -40,35 +40,8 @@ You can configure which Bedrock models to use for different agent roles:
 from bedrock_swarm import Agent
 
 agent = Agent(
-    model_id="anthropic.claude-v2",  # or other Bedrock model IDs
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",  # Latest Claude 3.5 model
     max_tokens=2000,
     temperature=0.7
-)
-```
-
-## Advanced Configuration
-
-### Logging
-
-Bedrock Swarm uses Python's built-in logging module. You can configure it like this:
-
-```python
-import logging
-
-logging.basicConfig(level=logging.INFO)
-```
-
-### Memory Configuration
-
-You can configure how agents store and retrieve information:
-
-```python
-from bedrock_swarm import Agent
-
-agent = Agent(
-    memory_config={
-        "type": "simple",  # or "vectorstore"
-        "max_items": 100
-    }
 )
 ```

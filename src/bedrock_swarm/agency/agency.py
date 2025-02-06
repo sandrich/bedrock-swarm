@@ -130,14 +130,17 @@ class Agency:
             ThreadMessage: Response message from the agent
 
         Raises:
-            ValueError: If the thread does not exist
+            ValueError: If the thread does not exist or thread has no agent
         """
         thread = self.get_thread(thread_id)
         if not thread:
             raise ValueError(f"Thread {thread_id} does not exist")
 
-        response = thread.execute(self.agent, message, tool_results)
-        self._update_stats(thread_id, self.agent.last_token_count)
+        if not thread.agent:
+            raise ValueError(f"Thread {thread_id} has no agent assigned")
+
+        response = thread.execute(message, tool_results)
+        self._update_stats(thread_id, thread.agent.last_token_count)
         return response
 
     def add_agent(

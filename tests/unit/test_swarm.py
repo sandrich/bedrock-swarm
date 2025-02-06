@@ -27,7 +27,7 @@ def mock_agent() -> BedrockAgent:
     config = AWSConfig(region="us-west-2", profile="default")
     agent = BedrockAgent(
         name="test_agent",
-        model_id="anthropic.claude-v2",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         instructions="Test instructions",
         aws_config=config,
     )
@@ -78,7 +78,10 @@ def test_get_nonexistent_agent(swarm: Swarm) -> None:
 def test_process_message(swarm: Swarm, mock_agent: BedrockAgent) -> None:
     """Test processing a message through the swarm."""
     message = "Test message"
+    tool_results = [{"tool": "test_tool", "result": "test_result"}]
     mock_agent.process_message = MagicMock(return_value="Test response")
-    response = swarm.process_message("test_agent", message)
+    response = swarm.process_message("test_agent", message, tool_results=tool_results)
     assert response == "Test response"
-    mock_agent.process_message.assert_called_once_with(message)
+    mock_agent.process_message.assert_called_once_with(
+        message, tool_results=tool_results
+    )

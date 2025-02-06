@@ -42,6 +42,7 @@ class Workflow:
         """
         self.name = name
         self.steps = steps
+        self.agents = {}  # Dict to store agent instances
         self.validate_workflow()
 
     def validate_workflow(self) -> None:
@@ -55,7 +56,15 @@ class Workflow:
         if len(agent_names) != len(set(agent_names)):
             raise ValueError("Duplicate agent names in workflow")
 
-        # Validate dependencies
+        # Build dependency graph combining requires and input_from
+        graph = {}
+        for step in self.steps:
+            deps = set(step.requires or [])
+            if step.input_from:
+                deps.update(step.input_from)
+            graph[step.agent] = deps
+
+        # Check for invalid dependencies and input sources
         for step in self.steps:
             if step.input_from:
                 # Check that input sources exist
@@ -73,11 +82,38 @@ class Workflow:
                         f"Invalid dependencies for {step.agent}: {invalid_deps}"
                     )
 
-                # Check for circular dependencies
-                if step.agent in step.requires:
-                    raise ValueError(
-                        f"Circular dependency: {step.agent} requires itself"
-                    )
+        # Check for circular dependencies
+        def has_cycle(node: str, visited: Set[str], path: Set[str]) -> bool:
+            """Check for cycles in the dependency graph.
+
+            Args:
+                node (str): Current node
+                visited (Set[str]): All visited nodes
+                path (Set[str]): Current path being explored
+
+            Returns:
+                bool: True if cycle found
+            """
+            if node in path:
+                return True
+            if node in visited:
+                return False
+
+            visited.add(node)
+            path.add(node)
+
+            for dep in graph[node]:
+                if has_cycle(dep, visited, path):
+                    return True
+
+            path.remove(node)
+            return False
+
+        # Check each node for cycles
+        visited: Set[str] = set()
+        for node in graph:
+            if node not in visited and has_cycle(node, visited, set()):
+                raise ValueError("Circular dependency detected in workflow")
 
     def get_execution_plan(self) -> List[WorkflowStep]:
         """Generate an execution plan for the workflow.
@@ -90,10 +126,13 @@ class Workflow:
         2. Performs topological sort
         3. Returns steps in execution order
         """
-        # Build dependency graph
-        graph: Dict[str, Set[str]] = {
-            step.agent: set(step.requires or []) for step in self.steps
-        }
+        # Build dependency graph combining requires and input_from
+        graph: Dict[str, Set[str]] = {}
+        for step in self.steps:
+            deps = set(step.requires or [])
+            if step.input_from:
+                deps.update(step.input_from)
+            graph[step.agent] = deps
 
         # Find all nodes
         nodes = set(graph.keys())
@@ -232,3 +271,50 @@ class Workflow:
             steps.append(step)
 
         return cls(name=data["name"], steps=steps)
+
+    def execute(self, input_data: Dict[str, Any]) -> Dict[str, str]:
+        """Execute the workflow with the given input.
+
+        Args:
+            input_data (Dict[str, Any]): Input data for the workflow
+
+        Returns:
+            Dict[str, str]: Results from each agent
+        """
+        results = {}
+        execution_plan = self.get_execution_plan()
+
+        for step in execution_plan:
+            agent = self.agents.get(step.agent)
+            if not agent:
+                raise ValueError(f"Agent {step.agent} not found")
+
+            # Format message with instructions and input
+            message_parts = []
+
+            # Add instructions if present
+            if step.instructions:
+                message_parts.append(step.instructions)
+
+            # Add initial input if requested
+            if step.use_initial_input:
+                message_parts.append(f"Input: {input_data['input']}")
+
+            # Add results from previous steps if requested
+            if step.input_from:
+                for prev_agent in step.input_from:
+                    if prev_agent in results:
+                        message_parts.append(
+                            f"{prev_agent} result: {results[prev_agent]}"
+                        )
+
+            # Build message with correct newlines
+            message = message_parts[0]
+            for part in message_parts[1:]:
+                message += "\n\n" + part
+
+            # Execute the step with tools if present
+            response = agent.process_message(message, step.tools)
+            results[step.agent] = response
+
+        return results

@@ -1,8 +1,8 @@
-"""Exceptions for the bedrock-swarm library."""
+"""Exceptions for the bedrock-swarm package."""
 
 
 class BedrockSwarmError(Exception):
-    """Base exception for all bedrock-swarm errors."""
+    """Base exception class for bedrock-swarm."""
 
     pass
 
@@ -19,20 +19,26 @@ class InvalidModelError(ModelError):
     pass
 
 
-class ModelInvokeError(ModelError):
-    """Raised when there is an error invoking the model."""
+class InvalidTemperatureError(ModelError):
+    """Raised when an invalid temperature value is provided."""
+
+    pass
+
+
+class ModelInvokeError(BedrockSwarmError):
+    """Raised when there is an error invoking a model."""
 
     pass
 
 
 class ToolError(BedrockSwarmError):
-    """Raised when there is an error with a tool."""
+    """Base class for tool-related errors."""
 
     pass
 
 
 class ToolNotFoundError(ToolError):
-    """Raised when a tool is not found."""
+    """Raised when a requested tool is not found."""
 
     pass
 
@@ -56,6 +62,18 @@ class AWSConfigError(ConfigError):
 
 
 class ResponseParsingError(BedrockSwarmError):
-    """Raised when there is an error parsing the model response."""
+    """Raised when there is an error parsing a model response."""
+
+    pass
+
+
+class AgencyError(BedrockSwarmError):
+    """Raised when there is an error with agency operations."""
+
+    pass
+
+
+class ThreadError(BedrockSwarmError):
+    """Raised when there is an error with thread operations."""
 
     pass

@@ -1,9 +1,7 @@
 """Tests for the thread module."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, Mock, patch
-from uuid import uuid4
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -16,14 +14,23 @@ from bedrock_swarm.tools.base import BaseTool
 class MockTool(BaseTool):
     """Mock tool for testing."""
 
-    def __init__(self, name="mock_tool"):
+    def __init__(
+        self, name: str = "mock_tool", description: str = "Mock tool for testing"
+    ):
         """Initialize mock tool."""
-        super().__init__(name=name)
+        self._name = name
+        self._description = description
         self._execute_mock = MagicMock(return_value="Tool result")
 
-    def execute(self, **kwargs):
-        """Execute the tool."""
-        return self._execute_mock(**kwargs)
+    @property
+    def name(self) -> str:
+        """Get tool name."""
+        return self._name
+
+    @property
+    def description(self) -> str:
+        """Get tool description."""
+        return self._description
 
     def get_schema(self):
         """Get tool schema."""
@@ -40,6 +47,10 @@ class MockTool(BaseTool):
             },
         }
 
+    def _execute_impl(self, **kwargs):
+        """Execute the mock tool."""
+        return self._execute_mock(**kwargs)
+
 
 @pytest.fixture
 def aws_config():
@@ -52,7 +63,7 @@ def agent(aws_config):
     """Create agent for testing."""
     return BedrockAgent(
         name="test_agent",
-        model_id="anthropic.claude-v2",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         aws_config=aws_config,
     )
 
@@ -66,52 +77,52 @@ def thread(agent):
 def test_thread_initialization(thread):
     """Test thread initialization."""
     assert thread.agent is not None
-    assert thread.messages == []
+    assert thread.history == []
 
 
 def test_add_message(thread):
     """Test adding a message."""
-    thread.add_message("Test message", "user")
-    assert len(thread.messages) == 1
-    assert thread.messages[0]["content"] == "Test message"
-    assert thread.messages[0]["role"] == "user"
+    thread.execute("Test message")
+    assert len(thread.history) == 2  # Human message + assistant response
+    assert thread.history[0].content == "Test message"
+    assert thread.history[0].role == "human"
 
 
 def test_add_message_with_tool_results(thread):
     """Test adding a message with tool results."""
     tool_results = [{"tool": "test_tool", "result": "test_result"}]
-    thread.add_message("Test message", "user", tool_results=tool_results)
-    assert len(thread.messages) == 1
-    assert thread.messages[0]["content"] == "Test message"
-    assert thread.messages[0]["role"] == "user"
-    assert thread.messages[0]["tool_results"] == tool_results
+    thread.execute("Test message", tool_results=tool_results)
+    assert len(thread.history) == 2  # Human message + assistant response
+    assert thread.history[0].content == "Test message"
+    assert thread.history[0].role == "human"
+    assert thread.history[0].tool_call_results == tool_results
 
 
 def test_get_messages(thread):
     """Test getting messages."""
-    thread.add_message("Message 1", "user")
-    thread.add_message("Message 2", "assistant")
-    messages = thread.get_messages()
-    assert len(messages) == 2
-    assert messages[0]["content"] == "Message 1"
-    assert messages[1]["content"] == "Message 2"
+    thread.execute("Message 1")
+    thread.execute("Message 2")
+    messages = thread.get_history()
+    assert len(messages) == 4  # 2 human messages + 2 assistant responses
+    assert messages[0].content == "Message 1"
+    assert messages[2].content == "Message 2"
 
 
 def test_clear_messages(thread):
     """Test clearing messages."""
-    thread.add_message("Test message", "user")
-    thread.clear_messages()
-    assert len(thread.messages) == 0
+    thread.execute("Test message")
+    thread.clear_history()
+    assert len(thread.history) == 0
 
 
 def test_process_message(thread):
     """Test processing a message."""
     thread.agent.process_message = MagicMock(return_value="Test response")
-    response = thread.process_message("Test message")
-    assert response == "Test response"
-    assert len(thread.messages) == 2
-    assert thread.messages[0]["content"] == "Test message"
-    assert thread.messages[1]["content"] == "Test response"
+    response = thread.execute("Test message")
+    assert response.content == "Test response"
+    assert len(thread.history) == 2
+    assert thread.history[0].content == "Test message"
+    assert thread.history[1].content == "Test response"
 
 
 def test_process_message_with_tool_results(thread):
@@ -120,12 +131,12 @@ def test_process_message_with_tool_results(thread):
         return_value="Test response with tool result"
     )
     tool_results = [{"tool": "test_tool", "result": "test_result"}]
-    response = thread.process_message("Test message", tool_results=tool_results)
-    assert response == "Test response with tool result"
-    assert len(thread.messages) == 2
-    assert thread.messages[0]["content"] == "Test message"
-    assert thread.messages[0]["tool_results"] == tool_results
-    assert thread.messages[1]["content"] == "Test response with tool result"
+    response = thread.execute("Test message", tool_results=tool_results)
+    assert response.content == "Test response with tool result"
+    assert len(thread.history) == 2
+    assert thread.history[0].content == "Test message"
+    assert thread.history[0].tool_call_results == tool_results
+    assert thread.history[1].content == "Test response with tool result"
 
 
 def test_message_init():

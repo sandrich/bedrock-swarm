@@ -59,6 +59,15 @@ class ToolFactory:
         return tool
 
     @classmethod
+    def get_tool_types(cls) -> Dict[str, Type[BaseTool]]:
+        """Get all registered tool types.
+
+        Returns:
+            Dict[str, Type[BaseTool]]: Dictionary mapping tool names to tool types
+        """
+        return cls._tool_types.copy()
+
+    @classmethod
     def get_tool(cls, tool_name: str) -> Optional[BaseTool]:
         """Get a tool instance by name.
 
