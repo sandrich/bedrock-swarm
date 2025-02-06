@@ -50,7 +50,7 @@ docs = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["bedrock_swarm"]
+packages = {find = {where = ["src"]}}
 
 [tool.setuptools.package-data]
 bedrock_swarm = ["py.typed"]
