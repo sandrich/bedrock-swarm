@@ -6,28 +6,107 @@ This guide explains the fundamental concepts of Bedrock Swarm and how they work 
 
 ```mermaid
 graph TD
-    A[Your Application] --> B[Bedrock Swarm]
-    B --> C[AWS Bedrock]
-    B --> D[Agents]
-    D --> E[Tools]
-    D --> F[Memory]
-    B --> G[Agency]
-    G --> H[Workflows]
-    G --> I[Threads]
+    App[Your Application]
+    BS[Bedrock Swarm]
+    Agency[Agency]
+    Agent1[Agent 1]
+    Agent2[Agent 2]
+    Tools[Tools]
+    Memory[Memory]
+    Bedrock[AWS Bedrock]
+    Threads[Threads]
+    Workflows[Workflows]
+
+    %% Application uses Bedrock Swarm
+    App --> BS
+
+    %% Agency is part of Bedrock Swarm
+    BS --> Agency
+
+    %% Agents are managed by Agency
+    Agency --> Agent1
+    Agency --> Agent2
+
+    %% Agency manages workflows and threads
+    Agency --> Workflows
+    Agency --> Threads
+
+    %% Each Agent has tools and memory
+    Agent1 --> Tools
+    Agent1 --> Memory
+    Agent2 --> Tools
+    Agent2 --> Memory
+
+    %% Both Agency and Agents use AWS Bedrock
+    Agent1 --> Bedrock
+    Agent2 --> Bedrock
+
+    %% Style definitions
+    classDef default fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef core fill:#e1d5e7,stroke:#9673a6,stroke-width:2px;
+    classDef aws fill:#dae8fc,stroke:#6c8ebf,stroke-width:2px;
+
+    %% Apply styles
+    class BS,Agency core;
+    class Bedrock aws;
+    class Agent1,Agent2 core;
 ```
 
-### Key Components
+## Key Components
 
-1. **AWS Bedrock**: The foundation that provides access to powerful language models
-2. **Agents**: AI assistants that can process messages and use tools
-3. **Tools**: Additional capabilities that agents can use
-4. **Memory**: System for maintaining conversation history
-5. **Agency**: Coordinator for multiple agents working together
-6. **Workflows**: Structured sequences of agent tasks
+### Your Application
+The entry point to Bedrock Swarm. This is your code that:
+- Interacts with the framework
+- Creates and configures agents
+- Manages workflows and conversations
+
+### Agency
+The central coordinator of the system that:
+- Creates and manages agents
+- Orchestrates workflows and threads
+- Handles communication between components
+
+### Agents
+AI assistants managed by the Agency, equipped with:
+- Dedicated tools for specific tasks
+- Memory system for conversation history
+- Direct access to AWS Bedrock models
+
+### AWS Bedrock
+The foundation model service providing:
+- Access to multiple AI models
+- Secure API endpoints
+- Usage monitoring and billing
+- Model version management
+
+### Tools
+Extensions that give agents additional capabilities:
+- Built-in tools for common tasks
+- Custom tools for specific needs
+- Parameter validation and error handling
+
+### Memory
+System for maintaining conversation context:
+- Message history storage
+- Context management
+- Configurable retention
+
+### Workflows
+Structured sequences of agent tasks that support:
+- Sequential execution
+- Parallel processing
+- Input/output chaining
+
+### Threads
+Conversation management system enabling:
+- Persistent conversations
+- Multi-agent discussions
+- Context preservation
 
 ## Understanding AWS Bedrock
 
 AWS Bedrock is Amazon's foundation model service that provides:
+
 - Access to multiple AI models (Claude, Titan, etc.)
 - Secure API endpoints
 - Usage monitoring and billing
@@ -39,23 +118,42 @@ Bedrock Swarm supports these model families:
 
 1. **Anthropic Claude**
    - Best for: Complex reasoning, coding, analysis
-   - Models: Claude 3.5, Claude 2
-   - Features: High accuracy, code understanding
+   - Models:
+     - Claude 3.5
+     - Claude 2
+   - Features:
+     - High accuracy
+     - Code understanding
+     - Complex reasoning
 
 2. **Amazon Titan**
    - Best for: General text tasks, summarization
-   - Models: Text Express, Text Lite
-   - Features: Cost-effective, fast responses
+   - Models:
+     - Text Express
+     - Text Lite
+   - Features:
+     - Cost-effective
+     - Fast responses
+     - General purpose
 
 3. **AI21 Jurassic**
    - Best for: Creative writing, text generation
-   - Models: J2 Mid, J2 Ultra
-   - Features: Creative outputs, multiple languages
+   - Models:
+     - J2 Mid
+     - J2 Ultra
+   - Features:
+     - Creative outputs
+     - Multiple languages
+     - Text generation
 
 4. **Cohere Command**
    - Best for: Text classification, analysis
-   - Models: Command Text v14
-   - Features: Efficient processing, classification
+   - Models:
+     - Command Text v14
+   - Features:
+     - Efficient processing
+     - Classification tasks
+     - Pattern recognition
 
 ## Agents in Detail
 

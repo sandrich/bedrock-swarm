@@ -28,9 +28,16 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
+extra_javascript:
+  - https://unpkg.com/mermaid@10.4.0/dist/mermaid.min.js
+
 plugins:
   - search
-  - mermaid2
+  - mermaid2:
+      version: 10.4.0
+      arguments:
+        securityLevel: 'loose'
+        theme: default
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -52,7 +59,6 @@ plugins:
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite

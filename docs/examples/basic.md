@@ -1,10 +1,12 @@
 # Basic Usage Examples
 
-This guide provides basic examples of using Bedrock Swarm.
+This guide provides basic examples of using Bedrock Swarm. Each example demonstrates a core feature of the framework.
 
-## Simple Conversation
+## Simple Conversation {#simple-conversation}
 
-Basic interaction with an agent:
+The most basic way to use Bedrock Swarm is to create an agent and have a conversation:
+
+### Code Example
 
 ```python
 from bedrock_swarm import BedrockAgent
@@ -32,9 +34,17 @@ if __name__ == "__main__":
     main()
 ```
 
-## Using Tools
+### Key Points
+- Basic agent creation requires minimal configuration
+- The agent uses Claude 3.5 by default
+- Messages are processed synchronously
+- Responses are returned as strings
 
-Example of an agent using tools:
+## Using Tools {#custom-tool-example}
+
+Tools extend an agent's capabilities. Here's an example of creating and using a custom calculator tool:
+
+### Code Example
 
 ```python
 from bedrock_swarm import BedrockAgent
@@ -105,9 +115,20 @@ if __name__ == "__main__":
     main()
 ```
 
-## Working with Memory
+### Key Points
+- Tools inherit from `BaseTool`
+- Tools require:
+  - A unique name
+  - A clear description
+  - A JSON schema for parameters
+  - An implementation method
+- Tools are automatically used by agents when relevant
 
-Example of using agent memory:
+## Working with Memory {#memory-example}
+
+Memory allows agents to maintain context across messages:
+
+### Code Example
 
 ```python
 from bedrock_swarm import BedrockAgent
@@ -140,9 +161,17 @@ if __name__ == "__main__":
     main()
 ```
 
-## Error Handling
+### Key Points
+- Memory is optional but recommended
+- `SimpleMemory` stores messages in a list
+- Memory persists between messages
+- Memory can be cleared when needed
 
-Example of proper error handling:
+## Error Handling {#error-handling}
+
+Proper error handling is essential for robust applications:
+
+### Code Example
 
 ```python
 from bedrock_swarm import BedrockAgent
@@ -174,9 +203,18 @@ if __name__ == "__main__":
     main()
 ```
 
-## Configuration
+### Key Points
+- Always handle specific exceptions
+- Common errors:
+  - `ModelInvokeError`: AWS Bedrock API issues
+  - `ToolError`: Tool execution problems
+- Use logging in production code
 
-Example of configuring an agent:
+## Configuration {#configuration-example}
+
+Agents can be configured with various parameters:
+
+### Code Example
 
 ```python
 from bedrock_swarm import BedrockAgent
@@ -204,3 +242,17 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+### Key Points
+- Configuration options:
+  - `max_tokens`: Response length limit
+  - `temperature`: Response randomness (0-1)
+  - `instructions`: Agent behavior guidelines
+  - `memory`: Memory system configuration
+- All parameters are optional with sensible defaults
+
+## Next Steps
+
+- Try the [Advanced Examples](advanced.md)
+- Learn about [Multi-Agent Systems](../user-guide/agents.md)
+- Explore [Custom Tool Development](../user-guide/tools.md)
