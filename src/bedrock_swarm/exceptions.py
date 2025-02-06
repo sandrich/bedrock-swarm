@@ -1,14 +1,50 @@
-"""Exceptions for the bedrock-swarm package."""
+"""Exceptions for bedrock-swarm."""
 
 
-class BedrockSwarmError(Exception):
-    """Base exception class for bedrock-swarm."""
+class AgencyError(Exception):
+    """Base exception for agency-related errors."""
 
     pass
 
 
-class ModelError(BedrockSwarmError):
-    """Raised when there is an error with the model."""
+class AgentError(Exception):
+    """Base exception for agent-related errors."""
+
+    pass
+
+
+class ModelError(Exception):
+    """Base exception for model-related errors."""
+
+    pass
+
+
+class ModelInvokeError(ModelError):
+    """Exception raised when there is an error invoking a model."""
+
+    pass
+
+
+class ResponseParsingError(ModelError):
+    """Exception raised when there is an error parsing a model response."""
+
+    pass
+
+
+class ToolError(Exception):
+    """Base exception for tool-related errors."""
+
+    pass
+
+
+class ToolExecutionError(ToolError):
+    """Exception raised when there is an error executing a tool."""
+
+    pass
+
+
+class BedrockSwarmError(Exception):
+    """Base exception class for bedrock-swarm."""
 
     pass
 
@@ -25,30 +61,6 @@ class InvalidTemperatureError(ModelError):
     pass
 
 
-class ModelInvokeError(BedrockSwarmError):
-    """Raised when there is an error invoking a model."""
-
-    pass
-
-
-class ToolError(BedrockSwarmError):
-    """Base class for tool-related errors."""
-
-    pass
-
-
-class ToolNotFoundError(ToolError):
-    """Raised when a requested tool is not found."""
-
-    pass
-
-
-class ToolExecutionError(ToolError):
-    """Raised when there is an error executing a tool."""
-
-    pass
-
-
 class ConfigError(BedrockSwarmError):
     """Raised when there is an error with the configuration."""
 
@@ -61,14 +73,8 @@ class AWSConfigError(ConfigError):
     pass
 
 
-class ResponseParsingError(BedrockSwarmError):
-    """Raised when there is an error parsing a model response."""
-
-    pass
-
-
-class AgencyError(BedrockSwarmError):
-    """Raised when there is an error with agency operations."""
+class ToolNotFoundError(ToolError):
+    """Raised when a requested tool is not found."""
 
     pass
 

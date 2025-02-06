@@ -14,7 +14,7 @@ A powerful framework for building multi-agent systems using AWS Bedrock. Create,
 
 - 🚀 **Easy-to-use API** - Create and manage AI agents with just a few lines of code
 - 🤝 **Multi-Agent Support** - Build complex systems with multiple cooperating agents
-- 🔧 **Extensible Tools** - Add custom capabilities to your agents
+- 🔧 **Extensible Tool System** - Create and add custom tools to enhance agent capabilities
 - 💾 **Memory Management** - Built-in conversation memory for persistent context
 - 🔒 **Type Safety** - Full type hints and runtime type checking
 - 📚 **Comprehensive Documentation** - Detailed guides and API reference
@@ -34,41 +34,51 @@ pip install "bedrock-swarm[docs]"
 
 ## 🚀 Quick Start
 
+Here's a simple example using an agent with the built-in CurrentTimeTool:
+
 ```python
-from bedrock_swarm import BedrockAgent
+from bedrock_swarm.agency.agency import Agency
 from bedrock_swarm.config import AWSConfig
+from bedrock_swarm.tools.time import CurrentTimeTool
 
-def main():
-    # Configure AWS
-    config = AWSConfig(
-        region="us-west-2",
-        profile="default"
-    )
+# Create AWS config
+aws_config = AWSConfig(region="us-east-1")
 
-    # Create an agent
-    agent = BedrockAgent(
-        name="assistant",
-        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        aws_config=config,
-        instructions="You are a helpful AI assistant."
-    )
+# Create agency
+agency = Agency(aws_config=aws_config)
 
-    # Process a message
-    response = agent.process_message("Hello! What can you help me with?")
-    print(response)
+# Create an agent with the time tool
+agent = agency.add_agent(
+    name="time_agent",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    tools=[CurrentTimeTool()],
+    instructions="You are a helpful assistant that can tell the current time in different formats and timezones.",
+)
 
-if __name__ == "__main__":
-    main()
+# Create a thread
+thread = agency.create_thread("time_agent")
+
+# Example conversation
+messages = [
+    "What time is it now?",
+    "What time is it in UTC?",
+    "What's the current date in YYYY-MM-DD format?",
+]
+
+for message in messages:
+    response = agency.execute(thread.thread_id, message)
+    print(f"User: {message}")
+    print(f"Assistant: {response.content}\n")
 ```
 
 ## 🎯 Examples
 
 Check out our [examples directory](examples/) for ready-to-use examples:
 
-1. [Simple Market Analysis](examples/simple_analysis.py) - A basic example showing how to:
-   - Configure AWS and create agents with different roles
-   - Add tools to agents for web search capabilities
-   - Execute a multi-agent task to analyze AI in healthcare
+1. [Simple Time Example](examples/simple_time.py) - A basic example showing how to:
+   - Configure AWS and create an agent
+   - Use the CurrentTimeTool for time-related queries
+   - Handle different time formats and timezones
 
 To run the examples:
 
@@ -85,36 +95,74 @@ export AWS_PROFILE=default
 
 3. Run an example:
 ```bash
-python examples/simple_analysis.py
+python examples/simple_time.py
 ```
 
-## 🧪 Development
+## 🛠️ Built-in Tools
 
-1. Clone the repository:
-```bash
-git clone https://github.com/sandrich/bedrock-swarm.git
-cd bedrock-swarm
+### CurrentTimeTool
+
+A versatile tool for getting the current time and date in various formats and timezones:
+
+```python
+from bedrock_swarm.tools.time import CurrentTimeTool
+
+time_tool = CurrentTimeTool()
+
+# Get current time in ISO format
+current_time = time_tool.execute()  # Returns: "2024-03-14T15:09:26"
+
+# Get time in specific format
+formatted_time = time_tool.execute(
+    format="%Y-%m-%d %H:%M:%S"
+)  # Returns: "2024-03-14 15:09:26"
+
+# Get time in specific timezone
+utc_time = time_tool.execute(
+    timezone="UTC",
+    format="%H:%M:%S"
+)  # Returns: "15:09:26"
+
+# Get formatted date in specific timezone
+tokyo_date = time_tool.execute(
+    timezone="Asia/Tokyo",
+    format="%A, %B %d, %Y"
+)  # Returns: "Thursday, March 14, 2024"
 ```
 
-2. Create and activate a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+## 🔧 Creating Custom Tools
 
-3. Install development dependencies:
-```bash
-pip install -e ".[dev,docs]"
-```
+You can create your own tools by extending the `BaseTool` class:
 
-4. Run tests:
-```bash
-pytest
-```
+```python
+from typing import Any, Dict
+from bedrock_swarm.tools.base import BaseTool
 
-5. Build documentation:
-```bash
-mkdocs serve
+class MyCustomTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "my_tool"
+
+    @property
+    def description(self) -> str:
+        return "Description of my tool"
+
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                },
+                "required": ["param1"]
+            }
+        }
+
+    def _execute_impl(self, **kwargs: Any) -> str:
+        # Implement your tool logic here
+        return f"Tool executed with {kwargs}"
 ```
 
 ## 📖 Documentation
@@ -134,12 +182,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- AWS Bedrock team for providing the foundation models
-- [Agency Swarm](https://github.com/VRSEN/agency-swarm) project for inspiration on multi-agent architecture and design patterns
-- The open-source community for inspiration and tools
 
 ## 📬 Contact
 

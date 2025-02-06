@@ -4,32 +4,35 @@ from .agency.agency import Agency
 from .agents.base import BedrockAgent
 from .config import AWSConfig
 from .exceptions import (
-    AWSConfigError,
+    AgencyError,
+    AgentError,
+    ModelError,
     ModelInvokeError,
     ResponseParsingError,
     ToolError,
+    ToolExecutionError,
 )
-from .logging import configure_logging, set_log_level
-from .memory import BaseMemory, Message, SimpleMemory
+from .logging import configure_logging
+from .models.claude import Claude35Model
 from .tools.base import BaseTool
-from .tools.web import WebSearchTool
+from .tools.time import CurrentTimeTool
 
 # Configure default logging
 configure_logging()
 
 __all__ = [
     "Agency",
-    "AWSConfig",
-    "AWSConfigError",
-    "BaseMemory",
-    "BaseTool",
     "BedrockAgent",
-    "Message",
+    "AWSConfig",
+    "configure_logging",
+    "AgencyError",
+    "AgentError",
+    "ModelError",
     "ModelInvokeError",
     "ResponseParsingError",
-    "SimpleMemory",
     "ToolError",
-    "WebSearchTool",
-    "configure_logging",
-    "set_log_level",
+    "ToolExecutionError",
+    "Claude35Model",
+    "BaseTool",
+    "CurrentTimeTool",
 ]

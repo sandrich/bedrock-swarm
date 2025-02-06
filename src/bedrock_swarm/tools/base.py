@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+from ..exceptions import ToolError
 from .validation import validate_tool_parameters, validate_tool_schema
 
 
@@ -59,10 +60,15 @@ class BaseTool(ABC):
             str: Tool execution result
 
         Raises:
-            ValueError: If parameters are invalid
+            ToolError: If tool execution fails
         """
-        validate_tool_parameters(self.get_schema(), **kwargs)
-        return self._execute_impl(**kwargs)
+        try:
+            validate_tool_parameters(self.get_schema(), **kwargs)
+            return self._execute_impl(**kwargs)
+        except Exception as e:
+            if isinstance(e, ToolError):
+                raise
+            raise ToolError(str(e))
 
     @abstractmethod
     def _execute_impl(self, **kwargs: Any) -> str:
@@ -76,5 +82,8 @@ class BaseTool(ABC):
 
         Returns:
             str: Tool execution result
+
+        Raises:
+            ToolError: If tool execution fails
         """
         pass

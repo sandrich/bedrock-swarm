@@ -202,7 +202,7 @@ class BedrockModel(ABC):
         )
         descriptions.append("\nFor example:")
         descriptions.append(
-            '{"tool_calls": [{"name": "web_search", "parameters": {"query": "latest AI news", "num_results": 3}}]}'
+            '{"tool_calls": [{"name": "current_time", "parameters": {"format": "%Y-%m-%d %H:%M:%S", "timezone": "UTC"}}]}'
         )
         descriptions.append(
             "\nAfter using a tool, continue your response based on the tool's result."

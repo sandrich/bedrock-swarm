@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class BedrockAgent:
     """Base class for Bedrock-powered agents.
 
-    This agent implementation provides a flexible architecture for working with different
+    This class provides a flexible architecture for working with different
     Bedrock models. It supports features like streaming responses, tool/function calling,
     and memory management depending on the model's capabilities.
 
@@ -91,12 +91,6 @@ class BedrockAgent:
         # Initialize model
         self.model = self._initialize_model()
         self.max_tokens = max_tokens or self.model.get_default_max_tokens()
-
-        # Register built-in tools
-        from ..tools.web import WebSearchTool
-
-        if "WebSearchTool" not in ToolFactory._tool_types:
-            ToolFactory.register_tool_type(WebSearchTool)
 
     def _validate_model_id(self) -> None:
         """Validate the model ID.

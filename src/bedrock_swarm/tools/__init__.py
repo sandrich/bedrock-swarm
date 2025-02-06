@@ -1,6 +1,7 @@
-"""Tools package for Bedrock Swarm."""
+"""Tool implementations."""
 
+from bedrock_swarm.tools.base import BaseTool
 from bedrock_swarm.tools.factory import ToolFactory
-from bedrock_swarm.tools.web import WebSearchTool
+from bedrock_swarm.tools.time import CurrentTimeTool
 
-__all__ = ["ToolFactory", "WebSearchTool"]
+__all__ = ["BaseTool", "ToolFactory", "CurrentTimeTool"]
