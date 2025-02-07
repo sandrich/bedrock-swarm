@@ -14,6 +14,16 @@
 
 A powerful framework for building multi-agent systems using AWS Bedrock. Create, manage, and orchestrate AI agents powered by state-of-the-art language models.
 
+## 📚 Documentation
+
+Full documentation is available at [bedrock-swarm.readthedocs.io](https://bedrock-swarm.readthedocs.io/). This includes:
+
+- Getting Started Guide
+- Core Concepts
+- API Reference
+- Examples
+- Contributing Guidelines
+
 ## ✨ Features
 
 - 🚀 **Easy-to-use API** - Create and manage AI agents with just a few lines of code
@@ -121,4 +131,57 @@ tokyo_date = time_tool.execute(
     timezone="Asia/Tokyo",
     format="%A, %B %d, %Y"
 )  # Returns: "Thursday, March 14, 2024"
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how you can help:
+
+1. Check out our [Contributing Guidelines](CONTRIBUTING.md)
+2. Fork the repository
+3. Create a new branch (`git checkout -b feature/amazing-feature`)
+4. Make your changes
+5. Run the tests (`pytest tests/unit -v`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+Make sure to:
+- Follow the existing code style (we use `black` and `isort`)
+- Add tests for new features
+- Update documentation as needed
+
+## 🙏 Special Thanks
+
+This project was inspired by and builds upon the excellent work of:
+- [Agency Swarm](https://github.com/VRSEN/agency-swarm) - A pioneering framework for multi-agent systems
+- The AWS Bedrock team for providing powerful foundation models
+- The open-source community for their invaluable contributions
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+```
+MIT License
+
+Copyright (c) 2024 Chris Sandrini
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
