@@ -1,10 +1,59 @@
-# Bedrock Swarm Documentation
+# Bedrock Agency Swarm
 
-Welcome to the Bedrock Swarm documentation! This library provides a powerful framework for building multi-agent systems using Amazon Bedrock's foundation models.
+A framework for building multi-agent systems using Amazon Bedrock.
 
-## What is Bedrock Swarm?
+## Features
 
-Bedrock Swarm is a Python library that enables you to create collaborative AI agent systems. It allows multiple specialized agents to work together, communicate, and solve complex tasks by breaking them down into smaller, manageable pieces.
+- **Multi-Agent Communication**: Coordinate multiple specialized agents to solve complex tasks
+- **Coordinator-Based Architecture**: Smart task planning and delegation
+- **Event Tracing**: Comprehensive tracing of all agent interactions and tool executions
+- **Tool Integration**: Easy integration of custom tools and capabilities
+- **Flexible Memory**: Configurable memory systems for agent context
+
+## Documentation
+
+- [Architecture](concepts/architecture.md): Learn about the coordinator-based design and communication flow
+- [Examples](examples/index.md): See practical examples of using the framework
+- [API Reference](api/index.md): Detailed API documentation
+
+## Quick Start
+
+1. Install the package:
+```bash
+pip install bedrock-agency-swarm
+```
+
+2. Set up your AWS credentials:
+```bash
+export AWS_PROFILE=your-profile
+export AWS_REGION=your-region
+```
+
+3. Create a simple agency:
+```python
+from bedrock_swarm.agency import Agency
+from bedrock_swarm.agents import BedrockAgent
+from bedrock_swarm.tools import CalculatorTool
+
+# Create a specialist agent
+calculator = BedrockAgent(
+    name="calculator",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    tools=[CalculatorTool()],
+    system_prompt="You are a mathematical specialist."
+)
+
+# Create agency with the specialist
+agency = Agency(specialists=[calculator])
+
+# Process a request
+response = agency.process_request("What is 15 * 7?")
+print(response)
+```
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](contributing.md) for details on our code of conduct and the process for submitting pull requests.
 
 ```mermaid
 graph TD
@@ -28,37 +77,6 @@ graph TD
 - **Built-in Tool System**: Easily extend agents with custom tools and capabilities
 - **Memory Management**: Share information between agents with flexible memory systems
 - **AWS Bedrock Integration**: Leverage powerful language models through Amazon Bedrock
-
-## Quick Start
-
-```python
-from bedrock_swarm.agents.base import BedrockAgent
-from bedrock_swarm.agency.agency import Agency
-from bedrock_swarm.tools.calculator import CalculatorTool
-from bedrock_swarm.tools.time import CurrentTimeTool
-
-# Create specialist agents
-calculator = BedrockAgent(
-    name="calculator",
-    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-    tools=[CalculatorTool()],
-    system_prompt="You are a specialist that handles calculations."
-)
-
-time_expert = BedrockAgent(
-    name="time_expert",
-    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-    tools=[CurrentTimeTool()],
-    system_prompt="You are a specialist that handles time-related queries."
-)
-
-# Create agency with specialists
-agency = Agency(specialists=[calculator, time_expert])
-
-# Get responses from the agency
-response = agency.get_completion("What is 15 * 7?")
-print(response)
-```
 
 ## Core Concepts
 

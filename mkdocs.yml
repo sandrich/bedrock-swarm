@@ -1,6 +1,6 @@
 site_name: Bedrock Swarm
-site_description: A framework for building multi-agent systems using AWS Bedrock
-repo_url: https://github.com/yourusername/bedrock-swarm
+site_description: A framework for building multi-agent systems using Amazon Bedrock
+repo_url: https://github.com/sandrich/bedrock-swarm
 repo_name: bedrock-swarm
 
 theme:
@@ -15,12 +15,6 @@ theme:
     - search.share
     - search.suggest
   palette:
-    - scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
     - scheme: slate
       primary: indigo
       accent: indigo
@@ -28,8 +22,8 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
-extra_javascript:
-  - https://unpkg.com/mermaid@10.4.0/dist/mermaid.min.js
+# extra_javascript:
+#   - https://unpkg.com/mermaid@10.4.0/dist/mermaid.min.js
 
 plugins:
   - search
@@ -68,14 +62,34 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+  - footnotes
 
 nav:
   - Home: index.md
-  - Concepts:
+  - Getting Started:
+    - Quick Start: getting-started/quickstart.md
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+  - Architecture:
+    - Overview: concepts/architecture.md
+    - Communication Flow: concepts/communication.md
+    - Event System: concepts/events.md
+  - Core Concepts:
     - Agency: concepts/agency.md
-    - Agents: concepts/agents.md
+    - Coordinator: concepts/coordinator.md
+    - Specialists: concepts/specialists.md
     - Tools: concepts/tools.md
-    - Threads: concepts/threads.md
     - Memory: concepts/memory.md
-    - Events: concepts/events.md
-  - Examples: examples/index.md
+    - Threads: concepts/threads.md
+  - Examples:
+    - Basic Usage: examples/basic.md
+    - Calculator Example: examples/calculator.md
+    - Time Expert Example: examples/time.md
+    - Multi-Agent Example: examples/multi-agent.md
+  - API Reference:
+    - Agency: api/agency.md
+    - Agents: api/agents.md
+    - Tools: api/tools.md
+    - Events: api/events.md
+    - Memory: api/memory.md
+  - Contributing: contributing.md

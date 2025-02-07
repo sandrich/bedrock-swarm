@@ -41,48 +41,37 @@ pip install "bedrock-swarm[docs]"
 Here's a simple example using an agent with the built-in CurrentTimeTool:
 
 ```python
-from bedrock_swarm.agency.agency import Agency
-from bedrock_swarm.config import AWSConfig
+from bedrock_swarm.agency import Agency
+from bedrock_swarm.agents import BedrockAgent
 from bedrock_swarm.tools.time import CurrentTimeTool
 
-# Create AWS config
-aws_config = AWSConfig(region="us-east-1")
-
-# Create agency
-agency = Agency(aws_config=aws_config)
-
-# Create an agent with the time tool
-agent = agency.add_agent(
+# Create a specialist agent
+time_agent = BedrockAgent(
     name="time_agent",
     model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
     tools=[CurrentTimeTool()],
-    instructions="You are a helpful assistant that can tell the current time in different formats and timezones.",
+    system_prompt="You are a helpful assistant that can tell the current time in different formats and timezones."
 )
 
-# Create a thread
-thread = agency.create_thread("time_agent")
+# Create agency with the specialist
+agency = Agency(specialists=[time_agent])
 
-# Example conversation
-messages = [
-    "What time is it now?",
-    "What time is it in UTC?",
-    "What's the current date in YYYY-MM-DD format?",
-]
+# Process time-related requests
+response = agency.process_request("What time is it now?")
+print(f"Response: {response}")
 
-for message in messages:
-    response = agency.execute(thread.thread_id, message)
-    print(f"User: {message}")
-    print(f"Assistant: {response.content}\n")
+response = agency.process_request("What time is it in UTC?")
+print(f"Response: {response}")
 ```
 
 ## 🎯 Examples
 
 Check out our [examples directory](examples/) for ready-to-use examples:
 
-1. [Simple Time Example](examples/simple_time.py) - A basic example showing how to:
-   - Configure AWS and create an agent
-   - Use the CurrentTimeTool for time-related queries
-   - Handle different time formats and timezones
+1. [Agency Example](examples/agency_example.py) - Basic agency setup and usage
+2. [Time Example](examples/time_example.py) - Working with time-related tools
+3. [Tool Example](examples/tool_example.py) - Creating and using custom tools
+4. [Trace Example](examples/trace_example.py) - Event tracing and monitoring
 
 To run the examples:
 
@@ -91,15 +80,15 @@ To run the examples:
 pip install "bedrock-swarm[dev]"
 ```
 
-2. Set up your environment variables:
+2. Set up your AWS credentials:
 ```bash
-export AWS_REGION=us-west-2
-export AWS_PROFILE=default
+export AWS_PROFILE=your-profile
+export AWS_REGION=your-region
 ```
 
 3. Run an example:
 ```bash
-python examples/simple_time.py
+python examples/time_example.py
 ```
 
 ## 🛠️ Built-in Tools
