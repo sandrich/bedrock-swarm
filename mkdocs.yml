@@ -31,35 +31,6 @@ plugins:
       version: 10.4.0
       arguments:
         securityLevel: 'loose'
-        theme: |
-          {
-            "theme": "base",
-            "themeVariables": {
-              "primaryColor": "#326CE5",
-              "primaryTextColor": "#fff",
-              "primaryBorderColor": "#fff",
-              "lineColor": "#F8B229",
-              "secondaryColor": "#006100",
-              "tertiaryColor": "#fff",
-              "background": "#ffffff",
-              "mainBkg": "#326CE5",
-              "textColor": "#000000",
-              "darkMode": false
-            },
-            "darkMode": {
-              "themeVariables": {
-                "primaryColor": "#326CE5",
-                "primaryTextColor": "#fff",
-                "primaryBorderColor": "#fff",
-                "lineColor": "#F8B229",
-                "secondaryColor": "#006100",
-                "tertiaryColor": "#121212",
-                "background": "#121212",
-                "mainBkg": "#326CE5",
-                "textColor": "#ffffff"
-              }
-            }
-          }
   - mkdocstrings:
       default_handler: python
       handlers:
