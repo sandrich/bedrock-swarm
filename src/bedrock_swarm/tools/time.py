@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, available_timezones
 
 from .base import BaseTool
 
@@ -24,7 +24,8 @@ class CurrentTimeTool(BaseTool):
             name: Name of the tool
             description: Description of the tool
         """
-        super().__init__(name=name, description=description)
+        self._name = name
+        self._description = description
 
     @property
     def name(self) -> str:
@@ -44,77 +45,81 @@ class CurrentTimeTool(BaseTool):
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "format": {
-                        "type": "string",
-                        "description": "Optional datetime format string (e.g. '%Y-%m-%d %H:%M:%S'). If not provided, returns ISO format.",
-                        "default": "iso",
-                    },
                     "timezone": {
                         "type": "string",
-                        "description": "Optional timezone name (e.g. 'UTC', 'US/Pacific'). Defaults to local timezone.",
-                        "default": "local",
+                        "description": "Timezone name (e.g. 'UTC', 'US/Pacific', 'Asia/Tokyo'). Defaults to local timezone.",
+                    },
+                    "format": {
+                        "type": "string",
+                        "description": "Optional datetime format string (e.g. '%I:%M %p' for '1:46 PM'). If not provided, returns a natural format.",
+                        "default": "%I:%M %p %Z",
                     },
                 },
+                "required": ["timezone"],
             },
         }
 
-    def _validate_format(self, fmt: str) -> None:
-        """Validate datetime format string.
+    def _normalize_timezone(self, timezone: str) -> str:
+        """Normalize timezone name.
 
         Args:
-            fmt: Format string to validate
+            timezone: Timezone name to normalize
+
+        Returns:
+            Normalized timezone name
 
         Raises:
-            ValueError: If format string is invalid
+            ValueError: If timezone is invalid
         """
-        logger.debug(f"Validating format string: {fmt}")
-
-        # Check that the format string contains at least one valid directive
-        valid_directives = {
-            "%Y",
-            "%m",
-            "%d",
-            "%H",
-            "%M",
-            "%S",
-            "%I",
-            "%p",
-            "%B",
-            "%b",
-            "%A",
-            "%a",
-            "%j",
-            "%U",
-            "%W",
-            "%c",
-            "%x",
-            "%X",
-            "%w",
-            "%Z",
-            "%z",
+        # Common aliases
+        aliases = {
+            "EST": "America/New_York",
+            "EDT": "America/New_York",
+            "CST": "America/Chicago",
+            "CDT": "America/Chicago",
+            "MST": "America/Denver",
+            "MDT": "America/Denver",
+            "PST": "America/Los_Angeles",
+            "PDT": "America/Los_Angeles",
+            "JST": "Asia/Tokyo",
+            "GMT": "UTC",
         }
 
-        if not any(directive in fmt for directive in valid_directives):
-            logger.debug(f"Format string contains no valid directives: {fmt}")
-            raise ValueError("Invalid datetime format")
+        # Try alias first
+        if timezone.upper() in aliases:
+            return aliases[timezone.upper()]
 
-        # Also try to use it with strftime to catch other errors
-        test_date = datetime(2024, 1, 1)
-        test_date.strftime(fmt)
-        logger.debug("Format string validation successful")
+        # Try as is
+        if timezone in available_timezones():
+            return timezone
+
+        # Try common variations
+        variations = [
+            timezone,
+            timezone.upper(),
+            timezone.lower(),
+            timezone.title(),
+            f"Etc/{timezone}",
+        ]
+
+        for var in variations:
+            if var in available_timezones():
+                return var
+
+        raise ValueError(f"Invalid timezone: {timezone}")
 
     def _execute_impl(
         self,
         *,
-        format: Optional[str] = None,
-        timezone: Optional[str] = None,
+        timezone: str,
+        format: str = "%I:%M %p %Z",
         **kwargs: Any,
     ) -> str:
         """Execute the time tool.
 
         Args:
+            timezone: Timezone name
             format: Optional datetime format string
-            timezone: Optional timezone name
             **kwargs: Additional keyword arguments (unused)
 
         Returns:
@@ -123,32 +128,18 @@ class CurrentTimeTool(BaseTool):
         Raises:
             ValueError: If timezone is invalid or format string is malformed
         """
-        logger.debug(f"Executing time tool with kwargs: {kwargs}")
+        try:
+            # Get current time in requested timezone
+            tz_name = self._normalize_timezone(timezone)
+            now = datetime.now(ZoneInfo(tz_name))
 
-        # Get current time
-        now = datetime.now()
-        logger.debug(f"Current time: {now}")
+            # Format the time
+            if format == "natural":
+                return now.strftime("%I:%M %p %Z on %A, %B %d, %Y")
+            elif format == "iso":
+                return now.isoformat()
+            else:
+                return now.strftime(format)
 
-        # Handle timezone
-        tz = timezone or "local"
-        logger.debug(f"Using timezone: {tz}")
-        if tz != "local":
-            try:
-                now = now.astimezone(ZoneInfo(tz))
-                logger.debug(f"Converted time to timezone: {now}")
-            except (KeyError, ValueError):
-                raise ValueError("Invalid timezone")
-
-        # Handle format
-        fmt = format or "iso"
-        logger.debug(f"Using format: {fmt}")
-        if fmt == "iso":
-            result = now.isoformat()
-            logger.debug(f"Returning ISO format: {result}")
-            return result
-
-        # Validate format string before using it
-        self._validate_format(fmt)
-        result = now.strftime(fmt)
-        logger.debug(f"Returning formatted time: {result}")
-        return result
+        except Exception as e:
+            raise ValueError(f"Error getting time: {str(e)}")

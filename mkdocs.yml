@@ -71,23 +71,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-    - Configuration: getting-started/configuration.md
-  - User Guide:
-    - Core Concepts: user-guide/core-concepts.md
-    - Agents: user-guide/agents.md
-    - Tools: user-guide/tools.md
-    - Memory: user-guide/memory.md
-    - Logging: user-guide/logging.md
-    - Advanced Features: user-guide/advanced.md
-  - API Reference:
-    - Agents: api/agents.md
-    - Tools: api/tools.md
-    - Memory: api/memory.md
-  - Examples:
-    - Overview: examples/README.md
-    - Basic Usage: examples/basic.md
-    - Advanced Patterns: examples/advanced.md
-  - Contributing: contributing.md
+  - Concepts:
+    - Agency: concepts/agency.md
+    - Agents: concepts/agents.md
+    - Tools: concepts/tools.md
+    - Threads: concepts/threads.md
+    - Memory: concepts/memory.md
+    - Events: concepts/events.md
+  - Examples: examples/index.md

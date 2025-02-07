@@ -5,34 +5,17 @@ import sys
 from typing import Optional
 
 
-def configure_logging(
-    level: Optional[str] = None,
-    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-) -> None:
-    """Configure logging for Bedrock Swarm.
+def configure_logging(level: str = "WARNING") -> None:
+    """Configure logging with a standard format.
 
     Args:
-        level (Optional[str]): Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        format (str): Log message format
+        level (str, optional): Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Defaults to WARNING.
     """
-    # Get the root logger for bedrock_swarm
-    logger = logging.getLogger("bedrock_swarm")
-
-    # Set level (default to WARNING if not specified)
-    log_level = getattr(logging, level.upper()) if level else logging.WARNING
-    logger.setLevel(log_level)
-
-    # Create console handler if none exists
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(log_level)
-
-        # Create formatter
-        formatter = logging.Formatter(format)
-        handler.setFormatter(formatter)
-
-        # Add handler to logger
-        logger.addHandler(handler)
+    logging.basicConfig(
+        level=getattr(logging, level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 def set_log_level(level: str) -> None:

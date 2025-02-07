@@ -1,6 +1,5 @@
-"""Module for managing agent memory and conversation history."""
+"""Base memory implementation for managing conversation history and shared state."""
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -8,141 +7,135 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class Message:
-    """A message in the conversation history.
+    """Message class for storing conversation history."""
 
-    Attributes:
-        role (str): Role of the sender (e.g., "human", "assistant", "system")
-        content (str): Message content
-        timestamp (datetime): When the message was sent
-        metadata (Optional[Dict[str, Any]]): Additional message metadata
-    """
-
-    role: str
+    role: str  # 'user', 'assistant', or 'system'
     content: str
     timestamp: datetime
+    thread_id: Optional[str] = None  # To support multi-thread conversations
     metadata: Optional[Dict[str, Any]] = None
 
 
-class BaseMemory(ABC):
-    """Base class for memory systems.
+class SharedState:
+    """Simple shared state between agents."""
 
-    Memory systems are responsible for storing and retrieving conversation history
-    and other relevant information for agents.
-    """
+    def __init__(self) -> None:
+        """Initialize shared state."""
+        self._data: Dict[str, Any] = {}
 
-    @abstractmethod
+    def set(self, key: str, value: Any) -> None:
+        """Set a value in shared state."""
+        self._data[key] = value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get a value from shared state."""
+        return self._data.get(key, default)
+
+    def clear(self) -> None:
+        """Clear all shared state."""
+        self._data.clear()
+
+
+class BaseMemory:
+    """Base class for memory implementations."""
+
     def add_message(self, message: Message) -> None:
         """Add a message to memory.
 
         Args:
-            message (Message): Message to add
+            message: Message to add
         """
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
-    def get_messages(
-        self,
-        limit: Optional[int] = None,
-        before: Optional[datetime] = None,
-        after: Optional[datetime] = None,
-        role: Optional[str] = None,
-    ) -> List[Message]:
+    def get_messages(self, thread_id: Optional[str] = None) -> List[Message]:
         """Get messages from memory.
 
         Args:
-            limit (Optional[int]): Maximum number of messages to return
-            before (Optional[datetime]): Get messages before this time
-            after (Optional[datetime]): Get messages after this time
-            role (Optional[str]): Filter by sender role
+            thread_id: Optional thread ID to filter messages
 
         Returns:
-            List[Message]: List of messages matching criteria
+            List of messages in chronological order
         """
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
+    def get_last_message(self, thread_id: Optional[str] = None) -> Optional[Message]:
+        """Get the most recent message.
+
+        Args:
+            thread_id: Optional thread ID to filter messages
+
+        Returns:
+            Most recent message or None if no messages
+        """
+        raise NotImplementedError
+
     def clear(self) -> None:
         """Clear all messages from memory."""
-        pass
+        raise NotImplementedError
 
 
 class SimpleMemory(BaseMemory):
-    """Simple in-memory implementation of BaseMemory."""
+    """Simple in-memory implementation with thread support and shared state."""
 
     def __init__(self, max_size: int = 1000) -> None:
-        """Initialize the memory system.
+        """Initialize SimpleMemory.
 
         Args:
-            max_size (int): Maximum number of messages to store
+            max_size: Maximum number of messages to store per thread
         """
-        self._messages: List[Message] = []
+        self._messages: Dict[str, List[Message]] = {}  # thread_id -> messages
         self._max_size = max_size
+        self.shared_state = SharedState()
 
     def add_message(self, message: Message) -> None:
         """Add a message to memory.
 
-        Args:
-            message (Message): Message to add
-        """
-        self._messages.append(message)
-        # Remove oldest messages if we exceed max size
-        if len(self._messages) > self._max_size:
-            self._messages = self._messages[-self._max_size :]
+        If max_size is reached, oldest messages are removed.
 
-    def get_messages(
-        self,
-        limit: Optional[int] = None,
-        before: Optional[datetime] = None,
-        after: Optional[datetime] = None,
-        role: Optional[str] = None,
-    ) -> List[Message]:
+        Args:
+            message: Message to add
+        """
+        thread_id = message.thread_id or "default"
+        if thread_id not in self._messages:
+            self._messages[thread_id] = []
+
+        self._messages[thread_id].append(message)
+
+        # Enforce size limit per thread
+        if len(self._messages[thread_id]) > self._max_size:
+            self._messages[thread_id] = self._messages[thread_id][-self._max_size :]
+
+    def get_messages(self, thread_id: Optional[str] = None) -> List[Message]:
         """Get messages from memory.
 
         Args:
-            limit (Optional[int]): Maximum number of messages to return
-            before (Optional[datetime]): Get messages before this time
-            after (Optional[datetime]): Get messages after this time
-            role (Optional[str]): Filter by sender role
+            thread_id: Optional thread ID to filter messages
 
         Returns:
-            List[Message]: List of messages matching criteria
+            List of messages in chronological order
         """
-        messages = self._messages
+        if thread_id:
+            return self._messages.get(thread_id, []).copy()
 
-        if before:
-            messages = [m for m in messages if m.timestamp < before]
+        # If no thread_id, return all messages sorted by timestamp
+        all_messages = []
+        for messages in self._messages.values():
+            all_messages.extend(messages)
+        return sorted(all_messages, key=lambda m: m.timestamp)
 
-        if after:
-            messages = [m for m in messages if m.timestamp > after]
-
-        if role:
-            messages = [m for m in messages if m.role == role]
-
-        if limit:
-            messages = messages[-limit:]
-
-        return messages
-
-    def get_last_message(self) -> Optional[Message]:
+    def get_last_message(self, thread_id: Optional[str] = None) -> Optional[Message]:
         """Get the most recent message.
 
-        Returns:
-            Optional[Message]: The most recent message, or None if no messages exist
-        """
-        messages = self.get_messages(limit=1)
-        return messages[0] if messages else None
-
-    def get_messages_by_role(self, role: str) -> List[Message]:
-        """Get all messages with a specific role.
-
         Args:
-            role (str): Role to filter by (e.g., "human", "assistant", "system")
+            thread_id: Optional thread ID to filter messages
 
         Returns:
-            List[Message]: List of messages with the specified role
+            Most recent message or None if no messages
         """
-        return self.get_messages(role=role)
+        messages = self.get_messages(thread_id)
+        return messages[-1] if messages else None
 
     def clear(self) -> None:
         """Clear all messages from memory."""
         self._messages.clear()
+        self.shared_state.clear()
