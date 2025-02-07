@@ -87,7 +87,7 @@ class AdvancedCalculatorTool(BaseTool):
 
             # Evaluate safely
             result = eval(expression, {"__builtins__": {}})
-            
+
             # Format with specified precision
             return f"{float(result):.{precision}f}"
         except Exception as e:
@@ -128,14 +128,14 @@ for query in calculations:
 def test_calculator_errors():
     # Create agency
     agency = Agency(specialists=[calculator])
-    
+
     # Test invalid expressions
     invalid_queries = [
         "Calculate 1 + x",  # Invalid variable
         "Evaluate 2 ** 1000",  # Too large
         "Compute sin(30)",  # Unsupported function
     ]
-    
+
     for query in invalid_queries:
         try:
             response = agency.process_request(query)
@@ -180,4 +180,4 @@ for event in agency.event_system.get_events():
 4. **Security**
    - Restrict allowed operations
    - Prevent code injection
-   - Limit computation size 
+   - Limit computation size

@@ -60,4 +60,4 @@ print(f"Bedrock Swarm installed successfully!")
    - Confirm your AWS account has Bedrock access
    - Verify IAM permissions are correctly set
 
-For more help, please [open an issue](https://github.com/sandrich/bedrock-swarm/issues) on GitHub. 
+For more help, please [open an issue](https://github.com/sandrich/bedrock-swarm/issues) on GitHub.

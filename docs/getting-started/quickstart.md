@@ -103,4 +103,4 @@ for event in agency.event_system.get_events():
 
 - Learn about the [architecture](../concepts/architecture.md)
 - Explore more [examples](../examples/basic.md)
-- Read about [core concepts](../concepts/agency.md) 
+- Read about [core concepts](../concepts/agency.md)

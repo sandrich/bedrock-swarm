@@ -15,14 +15,14 @@ sequenceDiagram
     User->>Agency: process_request()
     Agency->>Coordinator: create_plan()
     Coordinator-->>Agency: JSON Plan
-    
+
     loop For each step in plan
         Agency->>Specialist: execute_step()
         Specialist->>Tool: execute()
         Tool-->>Specialist: result
         Specialist-->>Agency: formatted result
     end
-    
+
     Agency->>Coordinator: format_response()
     Coordinator-->>Agency: natural response
     Agency-->>User: final response
@@ -155,4 +155,4 @@ sequenceDiagram
 4. **Event Tracing**
    - Enable event tracing for debugging
    - Monitor communication flow
-   - Track execution times 
+   - Track execution times

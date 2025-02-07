@@ -166,12 +166,12 @@ def test_specialist():
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         tools=[CustomTool()]
     )
-    
+
     # Test basic functionality
     response = specialist.generate("Test request")
     assert response is not None
-    
+
     # Test tool execution
     tool_response = specialist.tools["custom_tool"].execute(arg="test")
     assert tool_response is not None
-``` 
+```

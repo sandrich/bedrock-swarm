@@ -36,17 +36,17 @@ sequenceDiagram
 
     User->>Agency: process_request("What time will it be 15 * 7 minutes from now?")
     Agency->>Coordinator: create_plan(request)
-    
+
     Note over Coordinator: Creates structured plan<br/>with calculation and time steps
-    
+
     Coordinator-->>Agency: Returns validated plan
-    
+
     Agency->>Calculator: execute_step("Calculate 15 * 7")
     Calculator-->>Agency: "105"
-    
+
     Agency->>TimeExpert: execute_step("Calculate time 105 minutes from now")
     TimeExpert-->>Agency: "8:19 PM UTC"
-    
+
     Agency->>Coordinator: format_response(results)
     Coordinator-->>Agency: Formatted natural response
     Agency-->>User: "In 105 minutes, it will be 8:19 PM UTC"
@@ -122,4 +122,4 @@ The Agency includes comprehensive event tracing to help debug and monitor the ex
 3. **Tool Implementation**
    - Validate inputs thoroughly
    - Return clear, structured outputs
-   - Include helpful error messages 
+   - Include helpful error messages

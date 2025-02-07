@@ -59,12 +59,11 @@ def aws_config() -> AWSConfig:
 
 
 @pytest.fixture
-def mock_agent(aws_config: AWSConfig) -> Generator[BedrockAgent, None, None]:
+def mock_agent() -> Generator[BedrockAgent, None, None]:
     """Create a mock agent."""
     agent = BedrockAgent(
         name="test_agent",
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        aws_config=aws_config,
     )
     # Mock the process_message method
     mock_process = MagicMock(return_value="Test response")
@@ -232,24 +231,21 @@ def test_workflow_serialization() -> None:
         assert orig_step.use_initial_input == recon_step.use_initial_input
 
 
-def test_complex_workflow_execution(aws_config: AWSConfig) -> None:
+def test_complex_workflow_execution() -> None:
     """Test execution of a complex workflow with dependencies and tools."""
     # Create agents
     agents = {
         "researcher": BedrockAgent(
             name="researcher",
             model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-            aws_config=aws_config,
         ),
         "analyst": BedrockAgent(
             name="analyst",
             model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-            aws_config=aws_config,
         ),
         "writer": BedrockAgent(
             name="writer",
             model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-            aws_config=aws_config,
         ),
     }
 

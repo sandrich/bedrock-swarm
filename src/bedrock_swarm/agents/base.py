@@ -68,9 +68,10 @@ class BedrockAgent:
         self.system_prompt = system_prompt
 
         # Initialize AWS session
+        aws_config = AWSConfig(region="us-west-2")  # Default to us-west-2
         self.session = boto3.Session(
-            region_name=AWSConfig.region,
-            profile_name=AWSConfig.profile,
+            region_name=aws_config.region,
+            profile_name=aws_config.profile,
         )
 
         # Initialize model using factory

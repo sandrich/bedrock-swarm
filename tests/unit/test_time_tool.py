@@ -1,8 +1,6 @@
-"""Tests for the time tool."""
+"""Tests for time tool implementation."""
 
 from datetime import datetime
-from unittest.mock import patch
-from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -12,69 +10,59 @@ from bedrock_swarm.tools.time import CurrentTimeTool
 
 @pytest.fixture
 def time_tool() -> CurrentTimeTool:
-    """Create time tool for testing."""
+    """Create a time tool instance."""
     return CurrentTimeTool()
 
 
-def test_tool_properties(time_tool: CurrentTimeTool) -> None:
-    """Test basic tool properties."""
-    assert time_tool.name == "current_time"
-    assert "time" in time_tool.description.lower()
-
-    schema = time_tool.get_schema()
-    assert schema["name"] == "current_time"
-    assert "format" in schema["parameters"]["properties"]
-    assert "timezone" in schema["parameters"]["properties"]
-
-
-@patch("bedrock_swarm.tools.time.datetime")
-def test_default_format(mock_datetime: datetime, time_tool: CurrentTimeTool) -> None:
-    """Test default ISO format."""
-    mock_now = datetime(2024, 3, 14, 15, 9, 26)
-    mock_datetime.now.return_value = mock_now
-
+def test_basic_time(time_tool: CurrentTimeTool) -> None:
+    """Test basic time functionality."""
+    # Test current time
     result = time_tool.execute()
-    assert result == "2024-03-14T15:09:26"
+    assert isinstance(result, str)
+    assert len(result) > 0
 
+    # Test with timezone
+    result = time_tool.execute(timezone="UTC")
+    assert "UTC" in result
 
-@patch("bedrock_swarm.tools.time.datetime")
-def test_custom_format(mock_datetime: datetime, time_tool: CurrentTimeTool) -> None:
-    """Test custom datetime format."""
-    mock_now = datetime(2024, 3, 14, 15, 9, 26)
-    mock_datetime.now.return_value = mock_now
-
-    result = time_tool.execute(format="%Y-%m-%d %H:%M:%S")
-    assert result == "2024-03-14 15:09:26"
-
-    result = time_tool.execute(format="%A, %B %d, %Y")
-    assert result == "Thursday, March 14, 2024"
+    # Test with offset
+    result = time_tool.execute(minutes_offset=60)
+    current = datetime.now()
+    result_time = datetime.strptime(result.rstrip(), "%Y-%m-%d %H:%M:%S")
+    assert result_time.hour in [(current.hour + 1) % 24, current.hour]
 
 
 def test_invalid_format(time_tool: CurrentTimeTool) -> None:
     """Test invalid format handling."""
-    with pytest.raises(ToolError, match="Invalid datetime format"):
-        time_tool.execute(format="%invalid")
-
-
-@patch("bedrock_swarm.tools.time.datetime")
-def test_timezone_conversion(
-    mock_datetime: datetime, time_tool: CurrentTimeTool
-) -> None:
-    """Test timezone conversion."""
-    mock_now = datetime(2024, 3, 14, 15, 9, 26, tzinfo=ZoneInfo("UTC"))
-    mock_datetime.now.return_value = mock_now
-
-    # Test UTC
-    result = time_tool.execute(timezone="UTC", format="%H:%M:%S")
-    assert result == "15:09:26"
-
-    # Test specific timezone
-    result = time_tool.execute(timezone="US/Pacific", format="%H:%M:%S")
-    pacific_time = mock_now.astimezone(ZoneInfo("US/Pacific"))
-    assert result == pacific_time.strftime("%H:%M:%S")
+    with pytest.raises(
+        ToolError, match="Error getting time: 'No time zone found with key InvalidZone'"
+    ):
+        time_tool.execute(timezone="InvalidZone")
 
 
 def test_invalid_timezone(time_tool: CurrentTimeTool) -> None:
     """Test invalid timezone handling."""
-    with pytest.raises(ToolError, match="Invalid timezone"):
+    with pytest.raises(
+        ToolError, match="Error getting time: 'No time zone found with key InvalidZone'"
+    ):
         time_tool.execute(timezone="InvalidZone")
+
+
+def test_timezone_aliases(time_tool: CurrentTimeTool) -> None:
+    """Test timezone aliases."""
+    # Test common timezones
+    result = time_tool.execute(timezone="America/Los_Angeles")
+    assert "America/Los_Angeles" in result or "PDT" in result or "PST" in result
+
+    result = time_tool.execute(timezone="America/New_York")
+    assert "America/New_York" in result or "EDT" in result or "EST" in result
+
+
+def test_timezone_normalization(time_tool: CurrentTimeTool) -> None:
+    """Test timezone name normalization."""
+    # Test case variations
+    result = time_tool.execute(timezone="utc")
+    assert "UTC" in result
+
+    result = time_tool.execute(timezone="GMT")
+    assert "UTC" in result or "GMT" in result

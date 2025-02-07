@@ -172,14 +172,14 @@ for query in queries:
 def test_time_errors():
     # Create agency
     agency = Agency(specialists=[time_expert])
-    
+
     # Test invalid queries
     invalid_queries = [
         "What time is it in InvalidZone?",  # Invalid timezone
         "What time will it be 999999 minutes from now?",  # Too large offset
         "What time is it on Mars?"  # Unsupported timezone
     ]
-    
+
     for query in invalid_queries:
         try:
             response = agency.process_request(query)
@@ -210,4 +210,4 @@ def test_time_errors():
 4. **Error Handling**
    - Validate all inputs
    - Provide clear error messages
-   - Handle edge cases 
+   - Handle edge cases

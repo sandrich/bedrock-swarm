@@ -115,4 +115,4 @@ response = agency.process_request("What time will it be 15 * 7 minutes from now?
 4. **Response Formatting**
    - Use clear format templates
    - Include all relevant information
-   - Maintain natural language flow 
+   - Maintain natural language flow

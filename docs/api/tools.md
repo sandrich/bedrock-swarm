@@ -18,4 +18,4 @@
 ::: bedrock_swarm.tools.planning
     options:
       show_root_heading: true
-      show_source: true 
+      show_source: true

@@ -3,6 +3,7 @@
 import json
 from typing import Any, Dict, Optional
 
+from ..exceptions import ResponseParsingError
 from .base import BedrockModel
 
 
@@ -31,15 +32,27 @@ class Claude35Model(BedrockModel):
             "messages": [{"role": "user", "content": content}],
         }
 
-    def process_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a streaming response from Claude."""
-        # Accumulate text from Claude's streaming chunks
-        text = ""
-        for event in response.get("body"):
-            chunk = json.loads(event.get("chunk").get("bytes").decode())
-            if chunk.get("type") == "content_block_delta" and (
-                delta_text := chunk.get("delta", {}).get("text")
-            ):
-                text += delta_text
+    def process_response(self, response: Dict[str, Any]) -> Dict[str, str]:
+        """Process the response from the model.
 
-        return {"content": text.strip()}
+        Args:
+            response: Raw response from Bedrock
+
+        Returns:
+            Processed response with content and tool calls
+
+        Raises:
+            ResponseParsingError: If response cannot be parsed
+        """
+        content = []
+        for event in response["body"]:
+            try:
+                chunk = json.loads(event.get("chunk").get("bytes").decode())
+                if chunk.get("type") == "content_block_delta":
+                    content.append(chunk["delta"]["text"])
+            except json.JSONDecodeError as e:
+                raise ResponseParsingError(f"Error parsing chunk: {str(e)}")
+            except (KeyError, AttributeError) as e:
+                raise ResponseParsingError(f"Invalid chunk format: {str(e)}")
+
+        return {"content": "".join(content)}

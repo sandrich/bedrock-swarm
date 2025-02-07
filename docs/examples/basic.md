@@ -140,7 +140,7 @@ try:
     response = agency.process_request("Request that might fail")
 except Exception as e:
     print(f"Error: {str(e)}")
-    
+
     # Check event trace for details
     events = agency.event_system.get_events()
     error_events = [e for e in events if e['type'] == 'error']
@@ -152,4 +152,4 @@ except Exception as e:
 
 - Learn about [specialist agents](../concepts/specialists.md)
 - Explore [tool creation](../concepts/tools.md)
-- Understand [event tracing](../concepts/events.md) 
+- Understand [event tracing](../concepts/events.md)

@@ -67,7 +67,7 @@ class DataProcessorTool(BaseTool):
     def __init__(self):
         self._name = "process_data"
         self._description = "Process and transform data"
-        
+
     def _execute_impl(self, *, data: str, **kwargs) -> str:
         # Implementation
         return f"Processed: {data}"
@@ -76,7 +76,7 @@ class AnalyzerTool(BaseTool):
     def __init__(self):
         self._name = "analyze_data"
         self._description = "Analyze processed data"
-        
+
     def _execute_impl(self, *, data: str, **kwargs) -> str:
         # Implementation
         return f"Analysis: {data}"
@@ -160,7 +160,7 @@ def test_multi_agent_errors():
         )
     except Exception as e:
         print(f"Error: {str(e)}")
-        
+
         # Check event trace for details
         events = agency.event_system.get_events()
         error_events = [e for e in events if e['type'] == 'error']
@@ -189,4 +189,4 @@ def test_multi_agent_errors():
 4. **Performance**
    - Optimize task distribution
    - Minimize unnecessary calls
-   - Handle timeouts properly 
+   - Handle timeouts properly

@@ -1,14 +1,15 @@
-"""Tests for the thread module."""
+"""Tests for thread implementation."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TypedDict, cast
+from typing import Optional, TypedDict
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bedrock_swarm.agency.thread import Thread, ThreadMessage
+from bedrock_swarm.agency.thread import Thread
 from bedrock_swarm.agents.base import BedrockAgent
 from bedrock_swarm.config import AWSConfig
+from bedrock_swarm.memory.base import Message
 from bedrock_swarm.tools.base import BaseTool
 
 
@@ -23,13 +24,10 @@ class ToolCallResult(TypedDict):
 class MockTool(BaseTool):
     """Mock tool for testing."""
 
-    def __init__(
-        self, name: str = "mock_tool", description: str = "Mock tool for testing"
-    ) -> None:
+    def __init__(self) -> None:
         """Initialize mock tool."""
-        self._name = name
-        self._description = description
-        self._execute_mock = MagicMock(return_value="Tool result")
+        self._name = "mock_tool"
+        self._description = "Mock tool for testing"
 
     @property
     def name(self) -> str:
@@ -41,24 +39,23 @@ class MockTool(BaseTool):
         """Get tool description."""
         return self._description
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict:
         """Get tool schema."""
         return {
             "name": self.name,
-            "description": "Mock tool for testing",
+            "description": self.description,
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"},
+                    "param": {"type": "string"},
                 },
-                "required": ["param1"],
+                "required": ["param"],
             },
         }
 
-    def _execute_impl(self, **kwargs: Any) -> str:
-        """Execute the mock tool."""
-        return cast(str, self._execute_mock(**kwargs))
+    def _execute_impl(self, **kwargs) -> str:
+        """Execute the tool."""
+        return f"Mock result: {kwargs['param']}"
 
 
 @pytest.fixture
@@ -68,239 +65,146 @@ def aws_config() -> AWSConfig:
 
 
 @pytest.fixture
-def agent(aws_config: AWSConfig) -> BedrockAgent:
-    """Create agent for testing."""
-    agent = BedrockAgent(
-        name="test_agent",
-        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        aws_config=aws_config,
-    )
-    # Mock the process_message method
-    mock_process = MagicMock(return_value="Test response")
-    with patch.object(agent, "process_message", mock_process):
-        return agent
+def mock_model() -> MagicMock:
+    """Create a mock model."""
+    mock = MagicMock()
+    mock.invoke.return_value = {"content": "Test response"}
+    return mock
+
+
+@pytest.fixture
+def agent(mock_model: MagicMock) -> BedrockAgent:
+    """Create a test agent."""
+    with patch("bedrock_swarm.models.factory.ModelFactory.create_model") as mock_create:
+        mock_create.return_value = mock_model
+        return BedrockAgent(
+            name="test",
+            model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+            tools=[MockTool()],
+        )
 
 
 @pytest.fixture
 def thread(agent: BedrockAgent) -> Thread:
-    """Create thread for testing."""
-    return Thread(agent=agent)
+    """Create a test thread."""
+    thread = Thread(agent)
+    thread.event_system = MagicMock()
+    thread.event_system.create_event = MagicMock(return_value="event_id")
+    return thread
 
 
 def test_thread_initialization(thread: Thread) -> None:
     """Test thread initialization."""
     assert thread.agent is not None
-    assert thread.history == []
-
-
-def test_add_message(thread: Thread) -> None:
-    """Test adding a message."""
-    thread.execute("Test message")
-    assert len(thread.history) == 2  # Human message + assistant response
-    assert thread.history[0].content == "Test message"
-    assert thread.history[0].role == "human"
-
-
-def test_add_message_with_tool_results(thread: Thread) -> None:
-    """Test adding a message with tool results."""
-    tool_results: List[ToolCallResult] = [
-        {
-            "tool_call_id": "test_id",
-            "output": "test_result",
-            "error": None,
-        }
-    ]
-    thread.execute("Test message", tool_results=tool_results)
-    assert len(thread.history) == 2  # Human message + assistant response
-    assert thread.history[0].content == "Test message"
-    assert thread.history[0].role == "human"
-    assert thread.history[0].tool_call_results == tool_results
-
-
-def test_get_messages(thread: Thread) -> None:
-    """Test getting messages."""
-    thread.execute("Message 1")
-    thread.execute("Message 2")
-    messages = thread.get_history()
-    assert len(messages) == 4  # 2 human messages + 2 assistant responses
-    assert messages[0].content == "Message 1"
-    assert messages[2].content == "Message 2"
-
-
-def test_clear_messages(thread: Thread) -> None:
-    """Test clearing messages."""
-    thread.execute("Test message")
-    thread.clear_history()
     assert len(thread.history) == 0
+    assert thread.current_run is None
+    assert len(thread.runs) == 0
 
 
-def test_process_message(thread: Thread) -> None:
-    """Test processing a message."""
-    assert thread.agent is not None
-    mock_process = MagicMock(return_value="Test response")
-    with patch.object(thread.agent, "process_message", mock_process):
-        response = thread.execute("Test message")
-        assert response.content == "Test response"
-        assert len(thread.history) == 2
-        assert thread.history[0].content == "Test message"
-        assert thread.history[1].content == "Test response"
-        mock_process.assert_called_once_with("Test message", None)
+def test_process_message_basic(thread: Thread) -> None:
+    """Test basic message processing."""
+    with patch.object(thread.agent, "generate") as mock_generate:
+        mock_generate.return_value = {"type": "message", "content": "Test response"}
+        response = thread.process_message("Test message")
+        assert response == "Test response"
+        assert len(thread.runs) == 1
+        assert thread.runs[0].status == "completed"
 
 
 def test_process_message_with_tool_results(thread: Thread) -> None:
     """Test processing a message with tool results."""
     assert thread.agent is not None
-    mock_process = MagicMock(return_value="Test response with tool result")
-    with patch.object(thread.agent, "process_message", mock_process):
-        tool_results: List[ToolCallResult] = [
-            {
-                "tool_call_id": "test_id",
-                "output": "test_result",
-                "error": None,
-            }
-        ]
-        response = thread.execute("Test message", tool_results=tool_results)
-        assert response.content == "Test response with tool result"
-        assert len(thread.history) == 2
-        assert thread.history[0].content == "Test message"
-        assert thread.history[0].tool_call_results == tool_results
-        assert thread.history[1].content == "Test response with tool result"
 
-
-def test_message_init() -> None:
-    """Test ThreadMessage initialization."""
-    timestamp = datetime.now()
-    message = ThreadMessage(
-        content="Test message",
-        role="human",
-        timestamp=timestamp,
-        tool_calls=[{"name": "test_tool"}],
-        tool_call_results=[
+    # Mock tool call response
+    tool_call_response = {
+        "type": "tool_call",
+        "tool_calls": [
             {
-                "tool_call_id": "test_id",
-                "output": "result",
-                "error": None,
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "mock_tool",
+                    "arguments": '{"param": "test"}',
+                },
             }
         ],
-        metadata={"key": "value"},
-    )
+    }
 
-    assert message.content == "Test message"
-    assert message.role == "human"
-    assert message.timestamp == timestamp
-    assert message.tool_calls == [{"name": "test_tool"}]
-    assert message.tool_call_results == [
-        {
-            "tool_call_id": "test_id",
-            "output": "result",
-            "error": None,
-        }
-    ]
-    assert message.metadata == {"key": "value"}
+    # Mock final response
+    final_response = {"content": "Test response"}
+
+    with patch.object(thread.agent, "generate") as mock_generate:
+        mock_generate.side_effect = [tool_call_response, final_response]
+        response = thread.process_message("Test message")
+        assert response == "Test response"
+        assert len(thread.runs) == 1
+        assert thread.runs[0].status == "completed"
+
+
+def test_add_message(thread: Thread) -> None:
+    """Test adding a message."""
+    message = Message(
+        role="human",
+        content="Test message",
+        timestamp=datetime.now(),
+    )
+    thread.history.append(message)
+    assert len(thread.history) == 1
+    assert thread.history[0] == message
+
+
+def test_get_messages(thread: Thread) -> None:
+    """Test getting messages."""
+    message1 = Message(
+        role="human",
+        content="Message 1",
+        timestamp=datetime.now(),
+    )
+    message2 = Message(
+        role="assistant",
+        content="Message 2",
+        timestamp=datetime.now(),
+    )
+    thread.history.extend([message1, message2])
+    messages = thread.get_history()
+    assert len(messages) == 2
+    assert messages[0] == message1
+    assert messages[1] == message2
 
 
 def test_thread_init(thread: Thread) -> None:
     """Test Thread initialization."""
-    assert isinstance(thread.thread_id, str)
-    assert isinstance(thread.history, list)
-    assert isinstance(thread.active_tools, dict)
-
-
-def test_thread_execute_simple(thread: Thread) -> None:
-    """Test executing a simple message in thread."""
-    assert thread.agent is not None
-    mock_process = MagicMock(return_value="Test response")
-    with patch.object(thread.agent, "process_message", mock_process):
-        message = "Test message"
-        response = thread.execute(message)
-
-        assert isinstance(response, ThreadMessage)
-        assert response.content == "Test response"
-        assert len(thread.history) == 2  # Human message + assistant response
-        assert thread.history[0].role == "human"
-        assert thread.history[0].content == "Test message"
-        assert thread.history[1].role == "assistant"
-        assert thread.history[1].content == "Test response"
-
-
-def test_thread_execute_with_tools(thread: Thread) -> None:
-    """Test executing a message with tools."""
-    assert thread.agent is not None
-    # Add a mock tool
-    tool = MockTool(name="mock_tool")
-    thread.agent.add_tool(tool)
-
-    # Set up mock response with tool call
-    mock_process = MagicMock(return_value="Test response with tool result")
-    with patch.object(thread.agent, "process_message", new=mock_process):
-        response = thread.execute("Test message")
-
-        assert isinstance(response, ThreadMessage)
-        assert response.content == "Test response with tool result"
-        assert len(thread.history) == 2  # Human message + assistant response
-        assert thread.history[0].role == "human"
-        assert thread.history[0].content == "Test message"
-        assert thread.history[1].role == "assistant"
-        assert thread.history[1].content == "Test response with tool result"
-
-        # Verify process_message was called with the tool
-        mock_process.assert_called_once_with("Test message", None)
+    # Create a new thread without event system for this test
+    test_thread = Thread(thread.agent)
+    assert isinstance(test_thread.id, str)
+    assert isinstance(test_thread.history, list)
+    assert isinstance(test_thread.runs, list)
+    assert test_thread.current_run is None
+    assert test_thread.event_system is None
 
 
 def test_thread_get_history(thread: Thread) -> None:
     """Test getting thread history."""
-    # Add some messages
-    messages = [
-        ThreadMessage(role="human", content="Message 1", timestamp=datetime.now()),
-        ThreadMessage(
-            role="assistant",
-            content="Response 1",
+    # Add messages
+    thread.history.append(
+        Message(
+            role="user",
+            content="Test message",
             timestamp=datetime.now(),
-            tool_calls=[{"name": "test_tool"}],
-            tool_call_results=[
-                {
-                    "tool_call_id": "test_id",
-                    "output": "result",
-                    "error": None,
-                }
-            ],
-        ),
-        ThreadMessage(role="human", content="Message 2", timestamp=datetime.now()),
-    ]
-    thread.history.extend(messages)
+        )
+    )
+    thread.history.append(
+        Message(
+            role="assistant",
+            content="Test response",
+            timestamp=datetime.now(),
+        )
+    )
 
-    # Get full history
-    history = thread.get_formatted_history()
-    assert len(history) == 3
-    assert history[0]["content"] == "Message 1"
-    assert history[1]["tool_calls"] == [{"name": "test_tool"}]
-    assert history[1]["tool_call_results"] == [
-        {
-            "tool_call_id": "test_id",
-            "output": "result",
-            "error": None,
-        }
-    ]
-
-    # Get limited history
-    limited = thread.get_formatted_history(limit=2)
-    assert len(limited) == 2
-    assert limited[0]["content"] == "Response 1"
-
-    # Get history without tools
-    no_tools = thread.get_formatted_history(include_tools=False)
-    assert "tool_calls" not in no_tools[1]
-    assert "tool_call_results" not in no_tools[1]
-
-
-def test_thread_clear_history(thread: Thread) -> None:
-    """Test clearing thread history."""
-    # Add some messages
-    messages = [
-        ThreadMessage(role="human", content="Message 1", timestamp=datetime.now()),
-        ThreadMessage(role="assistant", content="Response 1", timestamp=datetime.now()),
-    ]
-    thread.history.extend(messages)
-
-    thread.clear_history()
-    assert len(thread.history) == 0
+    # Check history
+    history = thread.history
+    assert len(history) == 2
+    assert history[0].role == "user"
+    assert history[0].content == "Test message"
+    assert history[1].role == "assistant"
+    assert history[1].content == "Test response"

@@ -8,8 +8,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from bedrock_swarm.agents.base import BedrockAgent
-from bedrock_swarm.config import AWSConfig
-from bedrock_swarm.memory.base import SimpleMemory
 from bedrock_swarm.swarm.base import Swarm
 
 
@@ -24,15 +22,10 @@ def aws_config() -> Dict[str, str]:
 @pytest.fixture
 def mock_agent() -> BedrockAgent:
     """Create a mock Bedrock agent."""
-    config = AWSConfig(region="us-west-2", profile="default")
-    agent = BedrockAgent(
+    return BedrockAgent(
         name="test_agent",
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        instructions="Test instructions",
-        aws_config=config,
     )
-    agent.memory = SimpleMemory(max_size=5)
-    return agent
 
 
 @pytest.fixture
