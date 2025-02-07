@@ -75,20 +75,24 @@ nav:
     - Event System: concepts/events.md
   - Core Concepts:
     - Agency: concepts/agency.md
+    - Agents: concepts/agents.md
     - Coordinator: concepts/coordinator.md
     - Specialists: concepts/specialists.md
     - Tools: concepts/tools.md
     - Memory: concepts/memory.md
     - Threads: concepts/threads.md
   - Examples:
+    - Overview: examples/index.md
     - Basic Usage: examples/basic.md
     - Calculator Example: examples/calculator.md
     - Time Expert Example: examples/time.md
     - Multi-Agent Example: examples/multi-agent.md
   - API Reference:
+    - Overview: api/index.md
     - Agency: api/agency.md
     - Agents: api/agents.md
     - Tools: api/tools.md
     - Events: api/events.md
     - Memory: api/memory.md
   - Contributing: contributing.md
+  - Code of Conduct: code_of_conduct.md

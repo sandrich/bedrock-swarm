@@ -4,8 +4,3 @@
     options:
       show_root_heading: true
       show_source: true
-
-::: bedrock_swarm.agents.claude
-    options:
-      show_root_heading: true
-      show_source: true
