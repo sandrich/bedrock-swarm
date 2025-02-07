@@ -37,8 +37,9 @@ class Claude35Model(BedrockModel):
         text = ""
         for event in response.get("body"):
             chunk = json.loads(event.get("chunk").get("bytes").decode())
-            if chunk.get("type") == "content_block_delta":
-                if delta_text := chunk.get("delta", {}).get("text"):
-                    text += delta_text
+            if chunk.get("type") == "content_block_delta" and (
+                delta_text := chunk.get("delta", {}).get("text")
+            ):
+                text += delta_text
 
         return {"content": text.strip()}

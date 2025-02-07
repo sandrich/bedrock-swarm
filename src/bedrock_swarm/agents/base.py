@@ -5,27 +5,17 @@ This module provides a flexible architecture for supporting multiple Bedrock mod
 
 import json
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
-from uuid import uuid4
+from typing import List, Optional
 
 import boto3
-from botocore.exceptions import ClientError
 
 from ..config import AWSConfig
-from ..exceptions import (
-    InvalidModelError,
-    ModelInvokeError,
-    ResponseParsingError,
-    ToolError,
-    ToolExecutionError,
-    ToolNotFoundError,
-)
+from ..exceptions import InvalidModelError
 from ..memory.base import BaseMemory, Message, SimpleMemory
 from ..models.base import BedrockModel
 from ..models.factory import ModelFactory
 from ..tools.base import BaseTool
-from ..types import AgentResponse, ToolCall
+from ..types import AgentResponse
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -110,7 +100,7 @@ class BedrockAgent:
             Complete prompt including tool descriptions
         """
         prompt = []
-        
+
         # Start with system prompt if provided
         if self.system_prompt:
             prompt.append(self.system_prompt)

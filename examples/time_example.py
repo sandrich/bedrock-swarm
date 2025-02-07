@@ -39,7 +39,7 @@ def main() -> None:
         print(f"User: {query}")
         response = agency.process_request(query)
         print(f"Assistant: {response}\n")
-        
+
         # # Display the event trace for this query
         # print("Event Trace:")
         # for event in agency.event_system.get_events():

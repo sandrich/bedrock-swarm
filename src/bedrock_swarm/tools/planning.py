@@ -1,14 +1,13 @@
 """Tool for coordinator to create and validate execution plans."""
 
 from typing import Any, Dict, List
-import json
 
 from ..tools.base import BaseTool
 
 
 class PlanningTool(BaseTool):
     """Tool for creating and validating execution plans.
-    
+
     This tool is specifically for the coordinator to:
     1. Break down a task into steps
     2. Identify which specialists are needed
@@ -50,22 +49,24 @@ class PlanningTool(BaseTool):
                                 "specialist": {"type": "string"},
                                 "requires_results_from": {
                                     "type": "array",
-                                    "items": {"type": "integer"}
-                                }
+                                    "items": {"type": "integer"},
+                                },
                             },
-                            "required": ["step_number", "description", "specialist"]
-                        }
+                            "required": ["step_number", "description", "specialist"],
+                        },
                     },
                     "final_output_format": {
                         "type": "string",
-                        "description": "Description of how the final result should be formatted"
-                    }
+                        "description": "Description of how the final result should be formatted",
+                    },
                 },
-                "required": ["steps", "final_output_format"]
-            }
+                "required": ["steps", "final_output_format"],
+            },
         }
 
-    def _execute_impl(self, *, steps: List[Dict[str, Any]], final_output_format: str, **kwargs: Any) -> str:
+    def _execute_impl(
+        self, *, steps: List[Dict[str, Any]], final_output_format: str, **kwargs: Any
+    ) -> str:
         """Execute the planning tool.
 
         Args:
@@ -75,7 +76,6 @@ class PlanningTool(BaseTool):
         Returns:
             String confirming the plan is valid and can proceed
         """
-
         # Validate steps are objects, not strings
         if any(isinstance(step, str) for step in steps):
             raise ValueError(
@@ -109,9 +109,13 @@ class PlanningTool(BaseTool):
             if "requires_results_from" in step:
                 for dep in step["requires_results_from"]:
                     if dep >= step["step_number"]:
-                        raise ValueError(f"Step {step['step_number']} cannot depend on future step {dep}")
+                        raise ValueError(
+                            f"Step {step['step_number']} cannot depend on future step {dep}"
+                        )
                     if dep not in step_numbers:
-                        raise ValueError(f"Step {step['step_number']} depends on non-existent step {dep}")
+                        raise ValueError(
+                            f"Step {step['step_number']} depends on non-existent step {dep}"
+                        )
 
         # Store the plan in the agency instance
         if "thread" in kwargs and hasattr(kwargs["thread"], "agent"):
@@ -119,15 +123,21 @@ class PlanningTool(BaseTool):
             if agency:
                 agency.current_plan = {
                     "steps": steps,
-                    "final_output_format": final_output_format
+                    "final_output_format": final_output_format,
                 }
 
         # Format the approved plan
         plan_output = ["Approved Plan:"]
         for step in steps:
-            deps = f" (using results from steps {step['requires_results_from']})" if "requires_results_from" in step else ""
-            plan_output.append(f"{step['step_number']}. {step['description']} → {step['specialist']}{deps}")
+            deps = (
+                f" (using results from steps {step['requires_results_from']})"
+                if "requires_results_from" in step
+                else ""
+            )
+            plan_output.append(
+                f"{step['step_number']}. {step['description']} → {step['specialist']}{deps}"
+            )
         plan_output.append(f"\nFinal Output Format: {final_output_format}")
         plan_output.append("\nPlan is approved. You can now proceed with execution.")
 
-        return "\n".join(plan_output) 
+        return "\n".join(plan_output)

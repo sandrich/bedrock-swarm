@@ -39,7 +39,7 @@ You have access to a tool that can provide current time information in any timez
     # Create agency with specialists and let the coordinator determine the best approach
     agency = Agency(
         specialists=[calculator, time_expert],
-        shared_instructions="""You are part of an agency with multiple specialists."""
+        shared_instructions="""You are part of an agency with multiple specialists.""",
     )
 
     # Example queries that require coordination
@@ -52,12 +52,14 @@ You have access to a tool that can provide current time information in any timez
         print(f"User: {query}")
         response = agency.process_request(query)
         print(f"Assistant: {response}\n")
-        
+
         # Display the event trace for this query
         print("Event Trace:")
         for event in agency.event_system.get_events():
-            print(f"[{event['timestamp']}] {event['type']} - Agent: {event['agent_name']}")
-            for key, value in event['details'].items():
+            print(
+                f"[{event['timestamp']}] {event['type']} - Agent: {event['agent_name']}"
+            )
+            for key, value in event["details"].items():
                 print(f"  {key}: {value}")
             print()
         print("-" * 80 + "\n")
@@ -67,4 +69,4 @@ You have access to a tool that can provide current time information in any timez
 load_dotenv()
 
 if __name__ == "__main__":
-    main() 
+    main()

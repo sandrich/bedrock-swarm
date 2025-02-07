@@ -77,14 +77,16 @@ class BedrockModel(ABC):
 
             except ClientError as e:
                 last_error = e
-                if e.response["Error"]["Code"] == "ThrottlingException":
-                    if attempt < max_retries - 1:
-                        logger.debug(
-                            f"Rate limited. Waiting {delay:.1f}s before retry {attempt + 1}/{max_retries}"
-                        )
-                        time.sleep(delay)
-                        delay *= 2  # Exponential backoff
-                        continue
+                if (
+                    e.response["Error"]["Code"] == "ThrottlingException"
+                    and attempt < max_retries - 1
+                ):
+                    logger.debug(
+                        f"Rate limited. Waiting {delay:.1f}s before retry {attempt + 1}/{max_retries}"
+                    )
+                    time.sleep(delay)
+                    delay *= 2  # Exponential backoff
+                    continue
                 raise ModelInvokeError(f"Error invoking model: {str(e)}")
 
         raise ModelInvokeError(f"Max retries exceeded: {str(last_error)}")

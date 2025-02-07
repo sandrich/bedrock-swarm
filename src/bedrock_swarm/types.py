@@ -1,7 +1,6 @@
 """Type definitions for Bedrock Swarm."""
 
-from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, TypedDict
 
 
 class ToolCallFunction(TypedDict):

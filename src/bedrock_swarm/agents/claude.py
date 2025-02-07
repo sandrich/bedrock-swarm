@@ -1,12 +1,7 @@
 """Claude agent implementation."""
 
-import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
-from botocore.client import BaseClient
-
-from ..models.claude import Claude35Model
-from ..tools.base import Tool
 from .base import BedrockAgent
 
 

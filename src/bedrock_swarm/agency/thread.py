@@ -6,12 +6,12 @@ It maintains the conversation history and handles message processing.
 
 import json
 from datetime import datetime
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional
 from uuid import uuid4
 
 from ..agents.base import BedrockAgent
 from ..memory.base import Message
-from ..types import AgentResponse, ToolCall, ToolOutput, ToolResult
+from ..types import ToolCall, ToolOutput, ToolResult
 
 
 class Run:
@@ -244,7 +244,7 @@ class Thread:
 
         try:
             # Parse arguments - handle both string and dict formats for backward compatibility
-            args = tool_call['function']['arguments']
+            args = tool_call["function"]["arguments"]
             if isinstance(args, str):
                 args = json.loads(args)
 

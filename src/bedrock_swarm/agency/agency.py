@@ -1,18 +1,15 @@
 """Agency implementation for orchestrating multi-agent communication."""
 
-import json
+
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
-from uuid import uuid4
-import re
 
 from ..agents.base import BedrockAgent
-from ..events import EventSystem  # Import here to avoid circular imports
+from ..events import EventSystem
 from ..memory.base import Message, SimpleMemory
-from ..tools.base import BaseTool
 from ..tools.planning import PlanningTool
 from ..tools.send_message import SendMessageTool
-from ..types import AgentResponse, ToolCall
 from .thread import Run, Thread
 
 
@@ -83,7 +80,7 @@ class Agency:
         for agent in specialists:
             # Get agent's tools and their descriptions
             tools = [f"    - {t.name}: {t.description}" for t in agent.tools.values()]
-            
+
             # Build capability description
             desc = [
                 f"- {agent.name}:",
@@ -166,16 +163,16 @@ IMPORTANT: Respond ONLY with the JSON plan, no other text."""
             name="coordinator",
             model_id=model_id,
             system_prompt=system_prompt,
-            tools=[PlanningTool()]
+            tools=[PlanningTool()],
         )
-        
+
         # Set agency reference
         coordinator._agency = self
-        
+
         # Add to agents dict
         self.agents[coordinator.name] = coordinator
         self.communication_paths[coordinator.name] = ["user"]
-        
+
         return coordinator
 
     def _setup_specialists(self, specialists: List[BedrockAgent]) -> None:
@@ -440,47 +437,53 @@ IMPORTANT: Respond ONLY with the JSON plan, no other text."""
 
     def process_request(self, request: str) -> str:
         """Process a user request through planning, execution, and response phases.
-        
+
         Args:
             request: The user's request
-            
+
         Returns:
             The final response after plan execution
         """
         # Phase 1: Planning
         # Have coordinator create a plan using the planning tool
         planning_message = f"Please create a plan to handle this request: {request}"
-        plan_response = self.get_completion(
+        self.get_completion(
             message=planning_message,
             recipient_agent=self.coordinator,
-            thread_id=self.main_thread.id
+            thread_id=self.main_thread.id,
         )
-        
+
         # The coordinator should have used create_plan tool which validates the plan
         # and stores it in self.current_plan
-        if not hasattr(self, 'current_plan'):
-            raise ValueError("Coordinator failed to create a valid plan using create_plan tool")
-        
+        if not hasattr(self, "current_plan"):
+            raise ValueError(
+                "Coordinator failed to create a valid plan using create_plan tool"
+            )
+
         # Phase 2: Execution
         # Execute each step and collect results
         self.event_system.create_event(
             type="execution_start",
             agent_name="agency",
-            run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+            run_id=self.main_thread.current_run.id
+            if self.main_thread.current_run
+            else "none",
             thread_id=self.main_thread.id,
-            details={"plan": self.current_plan}
+            details={"plan": self.current_plan},
         )
-        
+
         results = self.execute_plan(self.current_plan)
-        
+
         self.event_system.create_event(
             type="execution_complete",
             agent_name="agency",
-            run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+            run_id=self.main_thread.current_run.id
+            if self.main_thread.current_run
+            else "none",
             thread_id=self.main_thread.id,
-            details={"results": results}
+            details={"results": results},
         )
-        
+
         # Phase 3: Response Formatting
         # Have coordinator create a natural response from the results
         formatting_message = f"""Please create a natural, clear response using these results.
@@ -499,49 +502,51 @@ Remember to:
         final_response = self.get_completion(
             message=formatting_message,
             recipient_agent=self.coordinator,
-            thread_id=self.main_thread.id
+            thread_id=self.main_thread.id,
         )
-        
+
         self.event_system.create_event(
             type="response_complete",
             agent_name="agency",
-            run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+            run_id=self.main_thread.current_run.id
+            if self.main_thread.current_run
+            else "none",
             thread_id=self.main_thread.id,
-            details={"response": final_response}
+            details={"response": final_response},
         )
-        
+
         return final_response
 
     def execute_plan(self, plan: Dict[str, Any]) -> Dict[str, str]:
         """Execute a plan by gathering information from specialists.
-        
+
         Args:
             plan: The validated plan to execute
-            
+
         Returns:
             Dictionary mapping step numbers to results
         """
         results = {}
-        
+
         # Execute each step in sequence
         for step in plan["steps"]:
             step_num = str(step["step_number"])
-            
+
             # Check dependencies are met
             if "requires_results_from" in step:
                 for dep in step["requires_results_from"]:
                     if str(dep) not in results:
                         raise ValueError(f"Missing required result from step {dep}")
-            
+
             # Get the specialist
             specialist = self.agents.get(step["specialist"])
             if not specialist:
                 raise ValueError(f"Specialist {step['specialist']} not found")
-            
+
             # Prepare context from dependencies
             context = ""
             description = step["description"]
-            
+
             if "requires_results_from" in step:
                 context = "Previous results:\n"
                 # Replace placeholders in description with actual values
@@ -552,43 +557,45 @@ Remember to:
                     if dep_str in results:
                         result_text = results[dep_str]
                         # Try to extract the first number from the result
-                        if numbers := re.findall(r'\d+', result_text):
+                        if numbers := re.findall(r"\d+", result_text):
                             description = description.replace("{{MINUTES}}", numbers[0])
                             description = description.replace("{MINUTES}", numbers[0])
-            
+
             # Execute the step
             message = f"{context}\nTask: {description}"
             result = self.get_completion(
                 message=message,
                 recipient_agent=specialist,
-                thread_id=self.main_thread.id
+                thread_id=self.main_thread.id,
             )
-            
+
             # Store the result
             results[step_num] = result
-            
+
             # Create execution event
             self.event_system.create_event(
                 type="step_complete",
                 agent_name=specialist.name,
-                run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+                run_id=self.main_thread.current_run.id
+                if self.main_thread.current_run
+                else "none",
                 thread_id=self.main_thread.id,
                 details={
                     "step_number": step_num,
                     "description": description,
-                    "result": result
-                }
+                    "result": result,
+                },
             )
-        
+
         return results
 
     def format_response(self, results: Dict[str, str], format_guide: str) -> str:
         """Format the final response based on collected results.
-        
+
         Args:
             results: Dictionary of step numbers to results
             format_guide: Guide for formatting the response
-            
+
         Returns:
             Formatted final response
         """
@@ -601,5 +608,5 @@ Results from each step:
         return self.get_completion(
             message=compilation_message,
             recipient_agent=self.coordinator,
-            thread_id=self.main_thread.id
+            thread_id=self.main_thread.id,
         )

@@ -1,8 +1,6 @@
 """Logging configuration for Bedrock Swarm."""
 
 import logging
-import sys
-from typing import Optional
 
 
 def configure_logging(level: str = "WARNING") -> None:

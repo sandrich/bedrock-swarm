@@ -52,7 +52,7 @@ class CurrentTimeTool(BaseTool):
                     "minutes_offset": {
                         "type": "integer",
                         "description": "Optional number of minutes to add to current time",
-                    }
+                    },
                 },
                 "required": [],
             },
@@ -107,7 +107,13 @@ class CurrentTimeTool(BaseTool):
 
         raise ValueError(f"Invalid timezone: {timezone}")
 
-    def _execute_impl(self, *, timezone: Optional[str] = None, minutes_offset: Optional[int] = None, **kwargs: Any) -> str:
+    def _execute_impl(
+        self,
+        *,
+        timezone: Optional[str] = None,
+        minutes_offset: Optional[int] = None,
+        **kwargs: Any,
+    ) -> str:
         """Execute the time tool.
 
         Args:
@@ -120,16 +126,16 @@ class CurrentTimeTool(BaseTool):
         try:
             # Use local timezone if none specified
             tz = ZoneInfo(timezone) if timezone else None
-            
+
             # Get current time in specified timezone
             current = datetime.now(tz)
-            
+
             # Add offset if specified
             if minutes_offset is not None:
                 current += timedelta(minutes=minutes_offset)
-                
+
             # Format the time
             return current.strftime("%Y-%m-%d %H:%M:%S %Z")
-            
+
         except Exception as e:
             raise ValueError(f"Error getting time: {str(e)}")
