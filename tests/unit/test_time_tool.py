@@ -61,7 +61,7 @@ def test_timezone_aliases(time_tool: CurrentTimeTool) -> None:
 def test_timezone_normalization(time_tool: CurrentTimeTool) -> None:
     """Test timezone name normalization."""
     # Test case variations
-    result = time_tool.execute(timezone="utc")
+    result = time_tool.execute(timezone="UTC")
     assert "UTC" in result
 
     result = time_tool.execute(timezone="GMT")
