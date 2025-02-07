@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from dotenv import load_dotenv
 
-from bedrock_swarm.agency.thread import Thread
+from bedrock_swarm.agency.agency import Agency
 from bedrock_swarm.agents.base import BedrockAgent
 from bedrock_swarm.config import AWSConfig
 from bedrock_swarm.tools.base import BaseTool
@@ -88,14 +88,15 @@ def main() -> None:
     AWSConfig.endpoint_url = os.getenv("AWS_ENDPOINT_URL")
 
     # Create agent with calculator tool
-    agent = BedrockAgent(
+    calculator = BedrockAgent(
+        name="calculator",
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         tools=[CalculatorTool()],
         system_prompt="You are a helpful assistant that can perform basic arithmetic calculations.",
     )
 
-    # Create thread to handle the conversation
-    thread = Thread(agent=agent)
+    # Create agency with the calculator agent
+    agency = Agency(specialists=[calculator])
 
     # Example queries to test different capabilities
     queries = [
@@ -106,7 +107,7 @@ def main() -> None:
     print("\nStarting conversation...\n")
     for query in queries:
         print(f"User: {query}")
-        response = thread.process_message(query)
+        response = agency.get_completion(query)
         print(f"Assistant: {response}\n")
 
 

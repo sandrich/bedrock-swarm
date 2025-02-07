@@ -243,12 +243,14 @@ class Thread:
             }
 
         try:
-            # Parse arguments
-            args = json.loads(tool_call["function"]["arguments"])
+            # Parse arguments - handle both string and dict formats for backward compatibility
+            args = tool_call['function']['arguments']
+            if isinstance(args, str):
+                args = json.loads(args)
 
             # Get and execute tool
             tool = self.agent.tools[tool_name]
-            result = tool.execute(**args)
+            result = tool.execute(**args, thread=self)
 
             return {"success": True, "result": str(result), "error": None}
         except Exception as e:

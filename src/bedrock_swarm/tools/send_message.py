@@ -2,7 +2,6 @@
 
 from typing import Any, Dict, List, Optional
 
-from ..agency.thread import Thread
 from ..tools.base import BaseTool
 
 
@@ -11,21 +10,19 @@ class SendMessageTool(BaseTool):
 
     def __init__(
         self,
-        name: str = "SendMessage",
-        description: str = "Send a message to another agent",
         valid_recipients: Optional[List[str]] = None,
-        agency=None,  # Will be set by Agency when adding tool
+        description: Optional[str] = None,
+        agency=None,  # Type hint omitted to avoid circular import
     ) -> None:
         """Initialize the send message tool.
 
         Args:
-            name: Name of the tool
-            description: Description of the tool
             valid_recipients: Optional list of valid recipient names
-            agency: Agency instance (will be set by Agency)
+            description: Optional tool description
+            agency: Optional reference to the agency
         """
-        self._name = name
-        self._description = description
+        self._name = "SendMessage"
+        self._description = description or "Send a message to another agent"
         self._valid_recipients = valid_recipients or []
         self._agency = agency
 
@@ -40,13 +37,7 @@ class SendMessageTool(BaseTool):
         return self._description
 
     def get_schema(self) -> Dict[str, Any]:
-        """Get JSON schema for the tool."""
-        recipients_desc = (
-            f"Valid recipients are: {', '.join(self._valid_recipients)}"
-            if self._valid_recipients
-            else "Recipient agent to send the message to"
-        )
-
+        """Get JSON schema for the send message tool."""
         return {
             "name": self.name,
             "description": self.description,
@@ -55,56 +46,46 @@ class SendMessageTool(BaseTool):
                 "properties": {
                     "recipient": {
                         "type": "string",
-                        "description": recipients_desc,
+                        "description": f"Name of the recipient agent. Valid recipients: {', '.join(self._valid_recipients)}",
                     },
                     "message": {
                         "type": "string",
-                        "description": "Message to send to the recipient agent",
+                        "description": "Message to send to the recipient",
                     },
                 },
                 "required": ["recipient", "message"],
             },
         }
 
-    def _execute_impl(
-        self,
-        *,
-        recipient: str,
-        message: str,
-        **kwargs: Any,
-    ) -> str:
+    def _execute_impl(self, *, recipient: str, message: str, **kwargs: Any) -> str:
         """Execute the send message tool.
 
         Args:
-            recipient: Name of recipient agent
+            recipient: Name of the recipient agent
             message: Message to send
-            **kwargs: Additional keyword arguments (unused)
+            **kwargs: Additional keyword arguments
 
         Returns:
             Response from the recipient agent
 
         Raises:
-            ValueError: If recipient is invalid or agency not set
+            ValueError: If recipient is not valid
         """
-        if not self._agency:
-            raise ValueError(
-                "SendMessageTool not properly initialized - agency not set"
-            )
+        if recipient not in self._valid_recipients:
+            raise ValueError(f"Invalid recipient: {recipient}")
 
-        if self._valid_recipients and recipient not in self._valid_recipients:
-            raise ValueError(
-                f"Invalid recipient. Valid recipients are: {', '.join(self._valid_recipients)}"
-            )
+        # Get thread from kwargs
+        thread = kwargs.get("thread")
+        if not thread:
+            raise ValueError("No thread provided")
 
-        # Get the recipient agent
+        # Process message through recipient's thread
         recipient_agent = self._agency.get_agent(recipient)
         if not recipient_agent:
             raise ValueError(f"Recipient agent {recipient} not found")
 
-        # Create a new thread for the recipient
-        thread = self._agency.create_thread(recipient)
-
-        # Get response from recipient
-        response = self._agency.get_completion(message=message, thread_id=thread.id)
-
-        return response
+        return self._agency.get_completion(
+            message=message,
+            recipient_agent=recipient_agent,
+            thread_id=thread.id,
+        )

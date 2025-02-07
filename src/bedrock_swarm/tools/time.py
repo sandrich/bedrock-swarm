@@ -1,7 +1,7 @@
 """Time-related tools."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 from zoneinfo import ZoneInfo, available_timezones
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class CurrentTimeTool(BaseTool):
-    """Tool for getting the current time and date."""
+    """Tool for getting current time and calculating future times."""
 
     def __init__(
         self,
@@ -38,7 +38,7 @@ class CurrentTimeTool(BaseTool):
         return self._description
 
     def get_schema(self) -> Dict[str, Any]:
-        """Get JSON schema for the tool."""
+        """Get JSON schema for the time tool."""
         return {
             "name": self.name,
             "description": self.description,
@@ -47,15 +47,14 @@ class CurrentTimeTool(BaseTool):
                 "properties": {
                     "timezone": {
                         "type": "string",
-                        "description": "Timezone name (e.g. 'UTC', 'US/Pacific', 'Asia/Tokyo'). Defaults to local timezone.",
+                        "description": "Timezone to get time in (e.g. 'UTC', 'US/Pacific'). Defaults to local timezone.",
                     },
-                    "format": {
-                        "type": "string",
-                        "description": "Optional datetime format string (e.g. '%I:%M %p' for '1:46 PM'). If not provided, returns a natural format.",
-                        "default": "%I:%M %p %Z",
-                    },
+                    "minutes_offset": {
+                        "type": "integer",
+                        "description": "Optional number of minutes to add to current time",
+                    }
                 },
-                "required": ["timezone"],
+                "required": [],
             },
         }
 
@@ -108,38 +107,29 @@ class CurrentTimeTool(BaseTool):
 
         raise ValueError(f"Invalid timezone: {timezone}")
 
-    def _execute_impl(
-        self,
-        *,
-        timezone: str,
-        format: str = "%I:%M %p %Z",
-        **kwargs: Any,
-    ) -> str:
+    def _execute_impl(self, *, timezone: Optional[str] = None, minutes_offset: Optional[int] = None, **kwargs: Any) -> str:
         """Execute the time tool.
 
         Args:
-            timezone: Timezone name
-            format: Optional datetime format string
-            **kwargs: Additional keyword arguments (unused)
+            timezone: Timezone to get time in (defaults to local timezone)
+            minutes_offset: Optional number of minutes to add to current time
 
         Returns:
-            Formatted current time string
-
-        Raises:
-            ValueError: If timezone is invalid or format string is malformed
+            Current or future time in specified timezone
         """
         try:
-            # Get current time in requested timezone
-            tz_name = self._normalize_timezone(timezone)
-            now = datetime.now(ZoneInfo(tz_name))
-
+            # Use local timezone if none specified
+            tz = ZoneInfo(timezone) if timezone else None
+            
+            # Get current time in specified timezone
+            current = datetime.now(tz)
+            
+            # Add offset if specified
+            if minutes_offset is not None:
+                current += timedelta(minutes=minutes_offset)
+                
             # Format the time
-            if format == "natural":
-                return now.strftime("%I:%M %p %Z on %A, %B %d, %Y")
-            elif format == "iso":
-                return now.isoformat()
-            else:
-                return now.strftime(format)
-
+            return current.strftime("%Y-%m-%d %H:%M:%S %Z")
+            
         except Exception as e:
             raise ValueError(f"Error getting time: {str(e)}")

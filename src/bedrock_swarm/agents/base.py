@@ -109,8 +109,15 @@ class BedrockAgent:
         Returns:
             Complete prompt including tool descriptions
         """
-        # Start with base prompt
-        prompt = ["You are a helpful assistant with access to the following tools:"]
+        prompt = []
+        
+        # Start with system prompt if provided
+        if self.system_prompt:
+            prompt.append(self.system_prompt)
+            prompt.append("")  # Add blank line after system prompt
+
+        # Add tool instructions
+        prompt.append("You have access to the following tools:")
 
         # Add each tool's description and parameters
         for tool in self.tools.values():
@@ -133,12 +140,15 @@ class BedrockAgent:
             [
                 "\nCRITICAL INSTRUCTIONS:",
                 "1. To use a tool, your ENTIRE response must be ONLY the JSON:",
-                '   {"type": "tool_call", "tool_calls": [{"id": "call_xxx", "type": "function", "function": {"name": "tool_name", "arguments": "{...}"}}]}',
+                '   {"type": "tool_call", "tool_calls": [{"id": "call_xxx", "type": "function", "function": {"name": "tool_name", "arguments": "{\\"steps\\":[{\\"step_number\\":1}]}"}}]}',
                 "",
-                "2. For a normal response without tools, respond with:",
+                "2. The arguments field MUST be a JSON string with escaped quotes. For example:",
+                '   CORRECT: {"type": "tool_call", "tool_calls": [{"id": "call_1", "type": "function", "function": {"name": "create_plan", "arguments": "{\\"steps\\":[{\\"step_number\\":1,\\"description\\":\\"Calculate 2 + 2\\",\\"specialist\\":\\"calculator\\"}],\\"final_output_format\\":\\"Result: {X}\\"}"}}]}',
+                "",
+                "3. For a normal response without tools, respond with:",
                 '   {"type": "message", "content": "your response here"}',
                 "",
-                "3. Do not include ANY other text before or after the JSON.",
+                "4. Do not include ANY other text before or after the JSON.",
                 "",
                 f"User query: {message}",
             ]
@@ -165,11 +175,11 @@ class BedrockAgent:
             endpoint_url=AWSConfig.endpoint_url,
         )
 
-        # Ask model if it needs to do a tool call
-        tool_prompt = self._build_tool_prompt(message)
+        # Build complete prompt including system prompt and tool instructions
+        complete_prompt = self._build_tool_prompt(message)
         response = self.model.invoke(
             client=client,
-            message=tool_prompt,
+            message=complete_prompt,
         )
 
         # Parse response

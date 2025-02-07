@@ -1,12 +1,12 @@
 """Calculator tool for basic arithmetic."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from .base import BaseTool
 
 
 class CalculatorTool(BaseTool):
-    """Tool for performing basic arithmetic calculations."""
+    """Simple calculator tool for basic arithmetic."""
 
     def __init__(
         self,

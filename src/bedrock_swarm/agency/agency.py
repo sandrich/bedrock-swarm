@@ -4,11 +4,13 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
+import re
 
 from ..agents.base import BedrockAgent
 from ..events import EventSystem  # Import here to avoid circular imports
 from ..memory.base import Message, SimpleMemory
 from ..tools.base import BaseTool
+from ..tools.planning import PlanningTool
 from ..tools.send_message import SendMessageTool
 from ..types import AgentResponse, ToolCall
 from .thread import Run, Thread
@@ -58,7 +60,7 @@ class Agency:
         # Add specialists and set up communication paths
         self._setup_specialists(specialists)
 
-        # Add SendMessage tool to all agents
+        # Add tools to all agents
         self._setup_agent_communication()
 
         # Create main thread with coordinator agent
@@ -79,44 +81,101 @@ class Agency:
         # Build coordinator's system prompt
         specialist_descriptions = []
         for agent in specialists:
-            desc = (
-                f"- {agent.name}: {agent.system_prompt}"
-                if agent.system_prompt
-                else f"- {agent.name}"
-            )
-            tools = [f"  * {t.name}: {t.description}" for t in agent.tools.values()]
+            # Get agent's tools and their descriptions
+            tools = [f"    - {t.name}: {t.description}" for t in agent.tools.values()]
+            
+            # Build capability description
+            desc = [
+                f"- {agent.name}:",
+                "  Expertise:",
+                f"    {agent.system_prompt}",
+                "  Available Tools:",
+            ]
             if tools:
-                desc += "\n  Tools:\n" + "\n".join(tools)
-            specialist_descriptions.append(desc)
+                desc.extend(tools)
+            specialist_descriptions.append("\n".join(desc))
 
-        system_prompt = f"""You are the coordinator agent responsible for managing communication and task routing in this agency.
+        system_prompt = f"""You are an expert task planner specializing in creating structured, actionable plans using specialized tools.
 
-Available specialists:
+AVAILABLE SPECIALISTS AND THEIR CAPABILITIES:
 {chr(10).join(specialist_descriptions)}
 
-Your responsibilities:
-1. Act as the main interface with users
-2. Route requests to appropriate specialists using the SendMessage tool:
-   - For calculations, send to the calculator specialist
-   - For time-related queries, send to the time_expert specialist
-3. For complex tasks that require multiple specialists:
-   - Break down the task into subtasks
-   - Route each subtask to the appropriate specialist
-   - Combine their responses into a coherent answer
+Your job is to create structured plans using the create_plan tool with this EXACT JSON structure:
+{{
+  "steps": [
+    {{
+      "step_number": 1,
+      "description": "[Concise, clear action instruction]",
+      "specialist": "[specialist name]",
+      "requires_results_from": [optional step numbers]
+    }}
+  ],
+  "final_output_format": "[Specify exact output expectations]"
+}}
 
-IMPORTANT: Always delegate tasks to specialists rather than trying to handle them yourself. Use the SendMessage tool to communicate with specialists."""
+STRICT FORMATTING RULES:
+- "steps" must be an array of objects
+- Each step requires:
+  * Incrementing step_number
+  * Clear description
+  * Valid specialist name
+  * Optional dependency tracking
 
-        # Create coordinator agent with only SendMessage tool
+VALIDATION RULES:
+- Each specialist must only perform operations within their constraints
+- Steps requiring calculation must use calculator
+- Time-related operations must use time_expert
+- No specialist can perform operations outside their constraints
+- Time calculations must be split:
+  * calculator does the math
+  * time_expert handles time queries and conversions
+- Dependencies must be explicit when using results from other steps
+- Each step must contain exactly one operation
+- No combining multiple operations in one step
+
+EXAMPLE - CORRECT:
+{{
+  "steps": [
+    {{
+      "step_number": 1,
+      "description": "Calculate 15 * 7",
+      "specialist": "calculator"
+    }},
+    {{
+      "step_number": 2,
+      "description": "Calculate the time {{MINUTES}} minutes from now",
+      "specialist": "time_expert",
+      "requires_results_from": [1]
+    }}
+  ],
+  "final_output_format": "In {{MINUTES}} minutes, the time will be {{TIME}}"
+}}
+
+EXAMPLE - WRONG (DO NOT DO THIS):
+{{
+  "steps": [
+    "1. Calculate 2 + 2",
+    "2. Calculate future time"
+  ]
+}}
+
+IMPORTANT: Respond ONLY with the JSON plan, no other text."""
+
+        # Create coordinator agent with planning tool
         coordinator = BedrockAgent(
-            name="coordinator", model_id=model_id, system_prompt=system_prompt
+            name="coordinator",
+            model_id=model_id,
+            system_prompt=system_prompt,
+            tools=[PlanningTool()]
         )
-
+        
+        # Set agency reference
+        coordinator._agency = self
+        
         # Add to agents dict
         self.agents[coordinator.name] = coordinator
-        self.communication_paths[coordinator.name] = [
-            "user"
-        ]  # Coordinator can talk to user
-
+        self.communication_paths[coordinator.name] = ["user"]
+        
         return coordinator
 
     def _setup_specialists(self, specialists: List[BedrockAgent]) -> None:
@@ -378,3 +437,169 @@ IMPORTANT: Always delegate tasks to specialists rather than trying to handle the
         """
         events = self.event_system.get_events(run_id=run_id)
         return "\n\n".join(self.event_system.format_event(event) for event in events)
+
+    def process_request(self, request: str) -> str:
+        """Process a user request through planning, execution, and response phases.
+        
+        Args:
+            request: The user's request
+            
+        Returns:
+            The final response after plan execution
+        """
+        # Phase 1: Planning
+        # Have coordinator create a plan using the planning tool
+        planning_message = f"Please create a plan to handle this request: {request}"
+        plan_response = self.get_completion(
+            message=planning_message,
+            recipient_agent=self.coordinator,
+            thread_id=self.main_thread.id
+        )
+        
+        # The coordinator should have used create_plan tool which validates the plan
+        # and stores it in self.current_plan
+        if not hasattr(self, 'current_plan'):
+            raise ValueError("Coordinator failed to create a valid plan using create_plan tool")
+        
+        # Phase 2: Execution
+        # Execute each step and collect results
+        self.event_system.create_event(
+            type="execution_start",
+            agent_name="agency",
+            run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+            thread_id=self.main_thread.id,
+            details={"plan": self.current_plan}
+        )
+        
+        results = self.execute_plan(self.current_plan)
+        
+        self.event_system.create_event(
+            type="execution_complete",
+            agent_name="agency",
+            run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+            thread_id=self.main_thread.id,
+            details={"results": results}
+        )
+        
+        # Phase 3: Response Formatting
+        # Have coordinator create a natural response from the results
+        formatting_message = f"""Please create a natural, clear response using these results.
+
+Format Guide: {self.current_plan['final_output_format']}
+
+Results from execution:
+{chr(10).join(f'Step {k}: {v}' for k, v in results.items())}
+
+Remember to:
+1. Use natural, clear language
+2. Include all relevant information
+3. Follow the format guide
+4. Make it easy for the user to understand"""
+
+        final_response = self.get_completion(
+            message=formatting_message,
+            recipient_agent=self.coordinator,
+            thread_id=self.main_thread.id
+        )
+        
+        self.event_system.create_event(
+            type="response_complete",
+            agent_name="agency",
+            run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+            thread_id=self.main_thread.id,
+            details={"response": final_response}
+        )
+        
+        return final_response
+
+    def execute_plan(self, plan: Dict[str, Any]) -> Dict[str, str]:
+        """Execute a plan by gathering information from specialists.
+        
+        Args:
+            plan: The validated plan to execute
+            
+        Returns:
+            Dictionary mapping step numbers to results
+        """
+        results = {}
+        
+        # Execute each step in sequence
+        for step in plan["steps"]:
+            step_num = str(step["step_number"])
+            
+            # Check dependencies are met
+            if "requires_results_from" in step:
+                for dep in step["requires_results_from"]:
+                    if str(dep) not in results:
+                        raise ValueError(f"Missing required result from step {dep}")
+            
+            # Get the specialist
+            specialist = self.agents.get(step["specialist"])
+            if not specialist:
+                raise ValueError(f"Specialist {step['specialist']} not found")
+            
+            # Prepare context from dependencies
+            context = ""
+            description = step["description"]
+            
+            if "requires_results_from" in step:
+                context = "Previous results:\n"
+                # Replace placeholders in description with actual values
+                for dep in step["requires_results_from"]:
+                    dep_str = str(dep)
+                    context += f"Step {dep}: {results[dep_str]}\n"
+                    # Extract the numeric result from previous step
+                    if dep_str in results:
+                        result_text = results[dep_str]
+                        # Try to extract the first number from the result
+                        if numbers := re.findall(r'\d+', result_text):
+                            description = description.replace("{{MINUTES}}", numbers[0])
+                            description = description.replace("{MINUTES}", numbers[0])
+            
+            # Execute the step
+            message = f"{context}\nTask: {description}"
+            result = self.get_completion(
+                message=message,
+                recipient_agent=specialist,
+                thread_id=self.main_thread.id
+            )
+            
+            # Store the result
+            results[step_num] = result
+            
+            # Create execution event
+            self.event_system.create_event(
+                type="step_complete",
+                agent_name=specialist.name,
+                run_id=self.main_thread.current_run.id if self.main_thread.current_run else "none",
+                thread_id=self.main_thread.id,
+                details={
+                    "step_number": step_num,
+                    "description": description,
+                    "result": result
+                }
+            )
+        
+        return results
+
+    def format_response(self, results: Dict[str, str], format_guide: str) -> str:
+        """Format the final response based on collected results.
+        
+        Args:
+            results: Dictionary of step numbers to results
+            format_guide: Guide for formatting the response
+            
+        Returns:
+            Formatted final response
+        """
+        # Have coordinator format the response with all results
+        compilation_message = f"""Please format the final response according to: {format_guide}
+
+Results from each step:
+{chr(10).join(f'Step {k}: {v}' for k, v in results.items())}"""
+
+        return self.get_completion(
+            message=compilation_message,
+            recipient_agent=self.coordinator,
+            thread_id=self.main_thread.id
+        )
