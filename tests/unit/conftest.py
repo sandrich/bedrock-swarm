@@ -1,4 +1,4 @@
-"""Shared test fixtures for bedrock-swarm tests."""
+"""Shared test fixtures for unit tests."""
 
 from typing import Any, Dict, Generator, List, Optional, cast
 from unittest.mock import MagicMock, patch
@@ -12,7 +12,7 @@ from bedrock_swarm.tools.base import BaseTool
 
 @pytest.fixture(autouse=True)
 def mock_aws_session() -> Generator[MagicMock, None, None]:
-    """Mock AWS session for all tests."""
+    """Mock AWS session for all unit tests."""
     with patch("boto3.Session") as mock_session:
         session = MagicMock()
         mock_client = MagicMock()

@@ -1,18 +1,18 @@
-"""Claude model implementation."""
+"""Titan model implementation."""
 
 import json
+import logging
 from typing import Any, Dict, Optional
 
 from ..exceptions import ResponseParsingError
 from .base import BedrockModel
 
+# Configure logger
+logger = logging.getLogger(__name__)
 
-class Claude35Model(BedrockModel):
-    """Implementation for Claude 3.5 models."""
 
-    def get_model_id(self) -> str:
-        """Get the Bedrock model ID."""
-        return "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+class TitanModel(BedrockModel):
+    """Implementation for Amazon Titan models."""
 
     def format_request(
         self,
@@ -21,7 +21,7 @@ class Claude35Model(BedrockModel):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Format a request for Claude.
+        """Format a request for Titan.
 
         Args:
             message: The message to send to the model
@@ -31,22 +31,32 @@ class Claude35Model(BedrockModel):
 
         Returns:
             Formatted request dictionary
+
+        Raises:
+            ValueError: If max_tokens exceeds the model's limit
         """
         # Combine system prompt and message if provided
-        content = f"{system}\n\n{message}" if system else message
+        prompt = f"{system}\n\n{message}" if system else message
 
-        return {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": max_tokens or 4096,
-            "temperature": temperature,
-            "messages": [{"role": "user", "content": content}],
+        # Validate token count
+        token_count = self.validate_token_count(max_tokens)
+
+        request = {
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "temperature": temperature,
+                "topP": 1,
+                "maxTokenCount": token_count,
+                "stopSequences": [],
+            },
         }
+        return request
 
     def _extract_content(self, response: Dict[str, Any]) -> str:
-        """Extract content from Claude response.
+        """Extract content from Titan response.
 
         Args:
-            response: Raw response from Claude
+            response: Raw response from Titan
 
         Returns:
             Extracted content as string
@@ -55,14 +65,18 @@ class Claude35Model(BedrockModel):
             ResponseParsingError: If content cannot be extracted
         """
         content = []
+        logger.debug("Processing response: %s", response)
+
         for event in response["body"]:
             try:
                 chunk = json.loads(event.get("chunk").get("bytes").decode())
-                if chunk.get("type") == "content_block_delta":
-                    content.append(chunk["delta"]["text"])
+                logger.debug("Processing chunk: %s", chunk)
+                if "outputText" in chunk:
+                    content.append(chunk["outputText"])
             except json.JSONDecodeError as e:
                 raise ResponseParsingError(f"Error parsing chunk: {str(e)}")
             except (KeyError, AttributeError) as e:
                 raise ResponseParsingError(f"Invalid chunk format: {str(e)}")
 
-        return "".join(content)
+        # Join and clean up the content
+        return "".join(content).strip()

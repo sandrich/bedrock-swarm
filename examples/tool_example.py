@@ -100,7 +100,6 @@ def main() -> None:
 
     # Example queries to test different capabilities
     queries = [
-        "What is 2 + 2?",
         "Calculate 15 * 7",
     ]
 
@@ -109,6 +108,16 @@ def main() -> None:
         print(f"User: {query}")
         response = agency.get_completion(query)
         print(f"Assistant: {response}\n")
+
+        print("Event Trace:")
+        for event in agency.event_system.get_events():
+            print(
+                f"[{event['timestamp']}] {event['type']} - Agent: {event['agent_name']}"
+            )
+            for key, value in event["details"].items():
+                print(f"  {key}: {value}")
+            print()
+        print("-" * 80 + "\n")
 
 
 # Load environment variables

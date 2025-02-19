@@ -50,3 +50,10 @@ site/
 # Misc
 .DS_Store
 Thumbs.db
+
+# Cursor
+.cursor/
+.cursorrules
+RULESFORAI.md
+
+agency-swarm/

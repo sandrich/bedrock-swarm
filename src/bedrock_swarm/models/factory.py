@@ -1,25 +1,56 @@
 """Factory for creating Bedrock model implementations."""
 
-from typing import Dict, Type
+from typing import Any, Dict, Type
 
 from .base import BedrockModel
 from .claude import Claude35Model
+from .titan import TitanModel
+
+# Registry of supported models, their implementations, and configurations
+BEDROCK_MODEL_REGISTRY = {
+    "us.anthropic.claude-3-5-sonnet": {
+        "20241022-v2:0": {
+            "class": Claude35Model,
+            "config": {
+                "max_tokens": 200000,  # Claude 3 Sonnet context window
+                "default_tokens": 4096,
+            },
+        }
+    },
+    "amazon.titan-text-express": {
+        "v1": {
+            "class": TitanModel,
+            "config": {
+                "max_tokens": 8000,  # Maximum context window
+                "default_tokens": 2048,  # Default response length
+            },
+        }
+    },
+    "amazon.titan-text-lite": {
+        "v1": {
+            "class": TitanModel,
+            "config": {
+                "max_tokens": 4000,
+                "default_tokens": 2048,
+            },
+        }
+    },
+    "amazon.titan-text-premier": {
+        "v1:0": {
+            "class": TitanModel,
+            "config": {
+                "max_tokens": 3072,  # As per validation error encountered
+                "default_tokens": 2048,
+            },
+        }
+    },
+}
 
 
 class ModelFactory:
-    """Factory for creating Bedrock model implementations.
+    """Factory for creating Bedrock model implementations."""
 
-    This class handles the creation of appropriate model implementations
-    based on the model ID. It maintains a registry of supported models
-    and their implementations.
-    """
-
-    # Registry of supported models and their implementations
-    _model_registry: Dict[str, Dict[str, Type[BedrockModel]]] = {
-        "us.anthropic.claude-3-5-sonnet": {
-            "20241022-v2:0": Claude35Model,
-        }
-    }
+    _model_registry = BEDROCK_MODEL_REGISTRY
 
     @classmethod
     def create_model(cls, model_id: str) -> BedrockModel:
@@ -32,7 +63,7 @@ class ModelFactory:
             An instance of the appropriate model implementation
 
         Raises:
-            InvalidModelError: If the model ID is not supported
+            ValueError: If the model ID is not supported
         """
         # Find matching model family
         family = next(
@@ -57,12 +88,19 @@ class ModelFactory:
                 f"Supported versions: {versions}"
             )
 
-        # Create and return model instance
-        return family_registry[version]()
+        # Create model instance with its configuration
+        model_info = family_registry[version]
+        model = model_info["class"](model_id)
+        model.set_config(model_info["config"])
+        return model
 
     @classmethod
     def register_model(
-        cls, family: str, version: str, model_class: Type[BedrockModel]
+        cls,
+        family: str,
+        version: str,
+        model_class: Type[BedrockModel],
+        config: Dict[str, Any],
     ) -> None:
         """Register a new model implementation.
 
@@ -70,16 +108,17 @@ class ModelFactory:
             family: Model family (e.g., "us.anthropic.claude-3-5-sonnet")
             version: Model version (e.g., "20241022-v2:0")
             model_class: Model implementation class
+            config: Model configuration (max_tokens, default_tokens, etc.)
         """
         if family not in cls._model_registry:
             cls._model_registry[family] = {}
-        cls._model_registry[family][version] = model_class
+        cls._model_registry[family][version] = {"class": model_class, "config": config}
 
     @classmethod
-    def get_supported_models(cls) -> Dict[str, Dict[str, Type[BedrockModel]]]:
+    def get_supported_models(cls) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """Get all supported models.
 
         Returns:
-            Dictionary of supported model families and their versions
+            Dictionary of supported model families, versions, and their configurations
         """
         return cls._model_registry.copy()

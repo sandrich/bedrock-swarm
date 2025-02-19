@@ -267,16 +267,6 @@ class StatefulTool(BaseTool):
             return self._state.get(key, "Not found")
 ```
 
-### 2. Async Tools
-
-```python
-class AsyncTool(BaseTool):
-    async def _execute_impl(self, **kwargs: Any) -> str:
-        # Async implementation
-        result = await self._async_operation(**kwargs)
-        return result
-```
-
 ### 3. Tool Composition
 
 ```python

@@ -2,6 +2,5 @@
 
 from .agency import Agency
 from .thread import Thread
-from .workflow import Workflow
 
-__all__ = ["Agency", "Thread", "Workflow"]
+__all__ = ["Agency", "Thread"]

@@ -12,7 +12,7 @@ from bedrock_swarm.models.claude import Claude35Model
 @pytest.fixture
 def model() -> Claude35Model:
     """Create a Claude model instance."""
-    return Claude35Model()
+    return Claude35Model("us.anthropic.claude-3-5-sonnet-20241022-v2:0")
 
 
 @pytest.fixture

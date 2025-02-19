@@ -1,29 +1,21 @@
 """Type definitions for Bedrock Swarm."""
 
-from typing import Any, Dict, List, Literal, Optional, TypedDict
+from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
 
 
 class ToolCallFunction(TypedDict):
     """Structure of a tool call function."""
 
     name: str
-    arguments: str  # JSON string of arguments
+    arguments: Dict[str, Any]  # Now supports direct dict arguments
 
 
 class ToolCall(TypedDict):
     """Structure of a tool call."""
 
     id: str
-    type: str
+    type: Literal["function"]
     function: ToolCallFunction
-
-
-class AgentResponse(TypedDict):
-    """Structure of an agent's response."""
-
-    type: str  # 'tool_call' or 'message'
-    content: Optional[str]  # Present for message responses
-    tool_calls: Optional[List[ToolCall]]  # Present for tool call responses
 
 
 class ToolOutput(TypedDict):
@@ -31,6 +23,36 @@ class ToolOutput(TypedDict):
 
     tool_call_id: str
     output: str
+
+
+class MessageResponse(TypedDict):
+    """Structure of a message response."""
+
+    type: Literal["message"]
+    content: str
+
+
+class ToolCallResponse(TypedDict):
+    """Structure of a tool call response."""
+
+    type: Literal["tool_call"]
+    tool_calls: List[ToolCall]
+
+
+AgentResponse = Union[MessageResponse, ToolCallResponse]
+
+
+class EventData(TypedDict):
+    """Structure of an event."""
+
+    id: str
+    type: str
+    timestamp: str
+    agent_name: str
+    run_id: str
+    thread_id: str
+    details: Dict[str, Any]
+    parent_id: Optional[str]
 
 
 class ToolResult(TypedDict):
