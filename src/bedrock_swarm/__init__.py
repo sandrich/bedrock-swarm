@@ -13,7 +13,7 @@ from .exceptions import (
     ToolExecutionError,
 )
 from .logging import configure_logging
-from .models.claude import Claude35Model
+from .models.claude import ClaudeModel
 from .tools.base import BaseTool
 from .tools.time import CurrentTimeTool
 
@@ -32,7 +32,7 @@ __all__ = [
     "ResponseParsingError",
     "ToolError",
     "ToolExecutionError",
-    "Claude35Model",
+    "ClaudeModel",
     "BaseTool",
     "CurrentTimeTool",
 ]

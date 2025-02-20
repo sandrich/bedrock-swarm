@@ -3,14 +3,14 @@
 from typing import Any, Dict, Type
 
 from .base import BedrockModel
-from .claude import Claude35Model
+from .claude import ClaudeModel
 from .titan import TitanModel
 
 # Registry of supported models, their implementations, and configurations
 BEDROCK_MODEL_REGISTRY = {
     "us.anthropic.claude-3-5-sonnet": {
         "20241022-v2:0": {
-            "class": Claude35Model,
+            "class": ClaudeModel,
             "config": {
                 "max_tokens": 200000,  # Claude 3 Sonnet context window
                 "default_tokens": 4096,

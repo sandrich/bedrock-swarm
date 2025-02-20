@@ -1,8 +1,14 @@
 """Tool for sending messages between agents."""
 
-from typing import Any, Dict, List, Optional
+import logging
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from ..tools.base import BaseTool
+
+if TYPE_CHECKING:
+    from ..agency.agency import Agency
+
+logger = logging.getLogger(__name__)
 
 
 class SendMessageTool(BaseTool):
@@ -12,7 +18,7 @@ class SendMessageTool(BaseTool):
         self,
         valid_recipients: Optional[List[str]] = None,
         description: Optional[str] = None,
-        agency=None,  # Type hint omitted to avoid circular import
+        agency: Optional["Agency"] = None,
     ) -> None:
         """Initialize the send message tool.
 

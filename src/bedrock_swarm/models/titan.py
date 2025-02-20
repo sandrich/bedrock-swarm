@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+from bedrock_swarm.exceptions import ModelInvokeError
+
 from ..exceptions import ResponseParsingError
 from .base import BedrockModel
 
@@ -33,10 +35,14 @@ class TitanModel(BedrockModel):
             Formatted request dictionary
 
         Raises:
-            ValueError: If max_tokens exceeds the model's limit
+            ValueError: If max_tokens exceeds the model's limit or temperature is invalid
         """
+        # Validate temperature
+        if not 0.0 <= temperature <= 1.0:
+            raise ValueError("Temperature must be between 0.0 and 1.0")
+
         # Combine system prompt and message if provided
-        prompt = f"{system}\n\n{message}" if system else message
+        prompt = f"{system}\n\n{message}" if system and system.strip() else message
 
         # Validate token count
         token_count = self.validate_token_count(max_tokens)
@@ -69,7 +75,7 @@ class TitanModel(BedrockModel):
 
         for event in response["body"]:
             try:
-                chunk = json.loads(event.get("chunk").get("bytes").decode())
+                chunk = json.loads(event.get("chunk", {}).get("bytes", b"{}").decode())
                 logger.debug("Processing chunk: %s", chunk)
                 if "outputText" in chunk:
                     content.append(chunk["outputText"])
@@ -79,4 +85,27 @@ class TitanModel(BedrockModel):
                 raise ResponseParsingError(f"Invalid chunk format: {str(e)}")
 
         # Join and clean up the content
-        return "".join(content).strip()
+        return " ".join(part.strip() for part in content).strip()
+
+    def invoke(self, message: str, **kwargs: Any) -> Dict[str, Any]:
+        """Invoke the model with a message.
+
+        Args:
+            message: The message to send to the model
+            **kwargs: Additional arguments to pass to format_request
+
+        Returns:
+            Model response
+
+        Raises:
+            ModelInvokeError: If there is an error invoking the model
+        """
+        try:
+            request = self.format_request(message, **kwargs)
+            response = self.client.invoke_model_with_response_stream(
+                modelId=self.get_model_id(),
+                body=json.dumps(request).encode(),
+            )
+            return self.process_response(response)
+        except Exception as e:
+            raise ModelInvokeError(f"Error invoking model: {str(e)}")

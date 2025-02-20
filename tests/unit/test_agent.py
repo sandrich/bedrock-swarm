@@ -48,11 +48,29 @@ class MockTool(BaseTool):
         return f"Mock result: {kwargs['param']}"
 
 
+@pytest.fixture(autouse=True)
+def mock_aws_config():
+    """Mock AWS configuration."""
+    mock_config = MagicMock()
+    mock_config.region = "us-west-2"
+    mock_config.profile = "default"
+    mock_config.endpoint_url = "https://bedrock-runtime.us-west-2.amazonaws.com"
+
+    with patch("bedrock_swarm.agents.base.AWSConfig") as mock_config_class:
+        mock_config_class.region = "us-west-2"
+        mock_config_class.profile = "default"
+        mock_config_class.endpoint_url = (
+            "https://bedrock-runtime.us-west-2.amazonaws.com"
+        )
+        mock_config_class.return_value = mock_config
+        yield mock_config_class
+
+
 @pytest.fixture
 def mock_model() -> MagicMock:
     """Create a mock model."""
     mock = MagicMock()
-    mock.invoke.return_value = {"content": "Test response"}
+    mock.invoke.return_value = {"type": "message", "content": "Test response"}
     return mock
 
 
@@ -64,6 +82,7 @@ def agent(mock_model: MagicMock) -> BedrockAgent:
         return BedrockAgent(
             name="test",
             model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+            role="Test agent for unit testing",
         )
 
 
@@ -71,8 +90,27 @@ def test_agent_initialization(agent: BedrockAgent) -> None:
     """Test agent initialization."""
     assert agent.name == "test"
     assert agent.model_id == "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    assert agent.role == "Test agent for unit testing"
     assert len(agent.tools) == 0
     assert isinstance(agent.memory, SimpleMemory)
+    assert agent.system_prompt is None
+
+    # Test initialization with all optional parameters
+    tool = MockTool()
+    memory = SimpleMemory()
+    agent_with_opts = BedrockAgent(
+        name="test_full",
+        model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        role="Full test agent",
+        tools=[tool],
+        memory=memory,
+        system_prompt="Test system prompt",
+    )
+    assert agent_with_opts.name == "test_full"
+    assert len(agent_with_opts.tools) == 1
+    assert agent_with_opts.tools[tool.name] == tool
+    assert agent_with_opts.memory == memory
+    assert agent_with_opts.system_prompt == "Test system prompt"
 
 
 def test_agent_validate_model_id() -> None:
@@ -81,6 +119,7 @@ def test_agent_validate_model_id() -> None:
     agent = BedrockAgent(
         name="test",
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        role="Test agent for validation",
     )
     assert agent.model_id == "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
 
@@ -89,7 +128,59 @@ def test_agent_validate_model_id() -> None:
         BedrockAgent(
             name="test",
             model_id="test.model",
+            role="Test agent for validation",
         )
+
+
+def test_build_prompt(agent: BedrockAgent) -> None:
+    """Test prompt building."""
+    # Test basic prompt
+    prompt = agent._build_prompt("Test message")
+    assert (
+        "You are a specialized agent with expertise in: Test agent for unit testing"
+        in prompt
+    )
+    assert "<input>Test message</input>" in prompt
+    assert "<response_format>" in prompt
+    assert "tool_call" in prompt
+    assert "message" in prompt
+
+    # Test with system prompt
+    agent.system_prompt = "Test system prompt"
+    prompt = agent._build_prompt("Test message")
+    assert "System: Test system prompt" in prompt
+
+    # Test with tools
+    tool = MockTool()
+    agent.tools = {tool.name: tool}
+    prompt = agent._build_prompt("Test message")
+    assert "<tools>" in prompt
+    assert tool.name in prompt
+    assert tool.description in prompt
+    assert "Schema:" in prompt
+
+
+def test_format_prompt(agent: BedrockAgent) -> None:
+    """Test prompt formatting with history."""
+    history = [
+        Message(role="user", content="User message 1", timestamp=datetime.now()),
+        Message(
+            role="assistant", content="Assistant response 1", timestamp=datetime.now()
+        ),
+        Message(role="user", content="User message 2", timestamp=datetime.now()),
+    ]
+
+    # Test without system prompt
+    prompt = agent._format_prompt("Current message", history)
+    assert "User message 1" in prompt
+    assert "Assistant response 1" in prompt
+    assert "User message 2" in prompt
+    assert "Current message" in prompt
+
+    # Test with system prompt
+    agent.system_prompt = "Test system prompt"
+    prompt = agent._format_prompt("Current message", history)
+    assert prompt.startswith("Test system prompt\n\n")
 
 
 def test_agent_generate(agent: BedrockAgent, mock_model: MagicMock) -> None:
@@ -102,6 +193,22 @@ def test_agent_generate(agent: BedrockAgent, mock_model: MagicMock) -> None:
     mock_model.invoke.assert_called_once()
     args = mock_model.invoke.call_args[1]
     assert "Test message" in args["message"]
+
+    # Test with tool call response
+    tool_call_response = {
+        "type": "tool_call",
+        "tool_calls": [
+            {
+                "id": "call_1",
+                "type": "function",
+                "function": {"name": "test_tool", "arguments": {"arg": "value"}},
+            }
+        ],
+    }
+    mock_model.invoke.reset_mock()
+    mock_model.invoke.return_value = tool_call_response
+    response = agent.generate("Use tool")
+    assert response == tool_call_response
 
 
 def test_agent_memory(agent: BedrockAgent) -> None:
@@ -129,3 +236,72 @@ def test_agent_memory(agent: BedrockAgent) -> None:
     assert messages[0].content == "Test message"
     assert messages[1].role == "assistant"
     assert messages[1].content == "Test response"
+
+
+def test_aws_session_initialization(mock_aws_config) -> None:
+    """Test AWS session initialization."""
+    with patch("boto3.Session") as mock_session:
+        mock_client = MagicMock()
+        mock_session.return_value.client.return_value = mock_client
+
+        agent = BedrockAgent(
+            name="test",
+            model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+            role="Test agent",
+        )
+
+        # Verify session initialization
+        mock_session.assert_called_once_with(
+            region_name="us-west-2",
+            profile_name="default",
+        )
+
+        # Test client initialization in generate method
+        agent.generate("Test message")
+        mock_session.return_value.client.assert_called_with(
+            "bedrock-runtime",
+            endpoint_url="https://bedrock-runtime.us-west-2.amazonaws.com",
+        )
+
+
+def test_last_token_count(agent: BedrockAgent) -> None:
+    """Test last token count tracking."""
+    # Initial value should be 0
+    assert agent.last_token_count == 0
+
+    # Set token count
+    agent._last_token_count = 100
+    assert agent.last_token_count == 100
+
+    # Reset token count
+    delattr(agent, "_last_token_count")
+    assert agent.last_token_count == 0
+
+
+def test_model_initialization_error() -> None:
+    """Test model initialization error handling."""
+    with patch("bedrock_swarm.models.factory.ModelFactory.create_model") as mock_create:
+        mock_create.side_effect = ValueError("Invalid model")
+
+        with pytest.raises(InvalidModelError, match="Invalid model"):
+            BedrockAgent(
+                name="test",
+                model_id="invalid.model",
+                role="Test agent",
+            )
+
+
+def test_generate_error_handling(agent: BedrockAgent, mock_model: MagicMock) -> None:
+    """Test error handling in generate method."""
+    # Test model invocation error
+    mock_model.invoke.side_effect = Exception("Model error")
+
+    with pytest.raises(Exception, match="Model error"):
+        agent.generate("Test message")
+
+    # Test client initialization error
+    with patch.object(agent.session, "client") as mock_client:
+        mock_client.side_effect = Exception("Client error")
+
+        with pytest.raises(Exception, match="Client error"):
+            agent.generate("Test message")

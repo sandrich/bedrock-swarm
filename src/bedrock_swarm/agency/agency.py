@@ -1,6 +1,5 @@
 """Agency implementation for orchestrating multi-agent communication."""
 
-import json
 import logging
 from typing import Dict, Optional
 

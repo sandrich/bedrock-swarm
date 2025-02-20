@@ -2,6 +2,7 @@ site_name: Bedrock Swarm
 site_description: A framework for building multi-agent systems using Amazon Bedrock
 repo_url: https://github.com/sandrich/bedrock-swarm
 repo_name: bedrock-swarm
+strict: true
 
 theme:
   name: material
@@ -14,6 +15,8 @@ theme:
     - search.highlight
     - search.share
     - search.suggest
+    - content.code.copy
+    - content.code.annotate
   palette:
     - scheme: slate
       primary: indigo
@@ -45,23 +48,37 @@ plugins:
             docstring_section_style: spacy
             merge_init_into_class: true
             show_if_no_docstring: false
-            show_signature_annotations: false
+            show_signature_annotations: true
+            show_bases: true
+            members_order: source
+            docstring_options:
+              ignore_init_summary: true
             extra:
-              show_warnings: false
+              show_warnings: true
 
 markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - tables
   - toc:
       permalink: true
   - footnotes
+  - attr_list
+  - md_in_html
+  - def_list
 
 nav:
   - Home: index.md
@@ -76,11 +93,13 @@ nav:
   - Core Concepts:
     - Agency: concepts/agency.md
     - Agents: concepts/agents.md
-    - Coordinator: concepts/coordinator.md
-    - Specialists: concepts/specialists.md
+    - Models: concepts/models.md
     - Tools: concepts/tools.md
     - Memory: concepts/memory.md
     - Threads: concepts/threads.md
+    - Events: concepts/events.md
+    - Coordinator: concepts/coordinator.md
+    - Specialists: concepts/specialists.md
   - Examples:
     - Overview: examples/index.md
     - Basic Usage: examples/basic.md
@@ -89,10 +108,32 @@ nav:
     - Multi-Agent Example: examples/multi-agent.md
   - API Reference:
     - Overview: api/index.md
-    - Agency: api/agency.md
-    - Agents: api/agents.md
-    - Tools: api/tools.md
-    - Events: api/events.md
-    - Memory: api/memory.md
-  - Contributing: contributing.md
+    - Agency:
+      - Overview: api/agency/index.md
+      - Agency API: api/agency.md
+      - Thread: api/agency/thread.md
+      - Run: api/agency/run.md
+      - Events: api/agency/events.md
+      - Agents: api/agency/agents.md
+      - Base Agent: api/agents/base.md
+    - Models:
+      - Overview: api/models/index.md
+      - Base Model: api/models/base.md
+      - Titan Model: api/models/titan.md
+      - Claude Model: api/models/claude.md
+      - Model Factory: api/models/factory.md
+    - Tools:
+      - Overview: api/tools/index.md
+      - API Reference: api/tools.md
+      - Base Tool: api/tools/base.md
+      - Calculator: api/tools/calculator.md
+      - Time: api/tools/time.md
+      - Send Message: api/tools/send_message.md
+      - Validation: api/tools/validation.md
+  - Development:
+    - Overview: development/index.md
+    - Testing: development/testing.md
+    - Contributing: development/contributing.md
+    - Code Organization: development/organization.md
+    - Tool Development: development/tools.md
   - Code of Conduct: code_of_conduct.md

@@ -7,7 +7,7 @@ from ..exceptions import ResponseParsingError
 from .base import BedrockModel
 
 
-class Claude35Model(BedrockModel):
+class ClaudeModel(BedrockModel):
     """Implementation for Claude 3.5 models."""
 
     def get_model_id(self) -> str:

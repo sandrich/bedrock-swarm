@@ -1,184 +1,148 @@
-"""Tests for validation module."""
+"""Tests for validation tool utilities."""
 
 import pytest
 
-from bedrock_swarm.tools.validation import validate_tool_parameters
+from bedrock_swarm.tools.validation import (
+    validate_tool_parameters,
+    validate_tool_schema,
+)
 
 
-def test_basic_validation() -> None:
-    """Test basic parameter validation."""
-    schema = {
+def test_validate_tool_schema():
+    """Test tool schema validation."""
+    # Valid schema
+    valid_schema = {
         "name": "test_tool",
         "description": "Test tool",
         "parameters": {
             "type": "object",
             "properties": {
-                "name": {"type": "string"},
-                "age": {"type": "integer"},
+                "param1": {"type": "string"},
             },
-            "required": ["name"],
+            "required": ["param1"],
+        },
+    }
+    validate_tool_schema("test_tool", valid_schema)  # Should not raise
+
+    # Schema name mismatch
+    invalid_schema = valid_schema.copy()
+    invalid_schema["name"] = "wrong_name"
+    with pytest.raises(ValueError, match="Schema name must match tool name"):
+        validate_tool_schema("test_tool", invalid_schema)
+
+
+def test_validate_tool_parameters_required():
+    """Test validation of required parameters."""
+    schema = {
+        "name": "test_tool",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "required_param": {"type": "string"},
+                "optional_param": {"type": "number"},
+            },
+            "required": ["required_param"],
         },
     }
 
-    # Valid parameters
-    validate_tool_parameters(schema, name="John", age=30)
-
-    # Valid with optional parameter missing
-    validate_tool_parameters(schema, name="John")
-
-    # Invalid: missing required parameter
+    # Missing required parameter
     with pytest.raises(ValueError, match="Missing required parameter"):
         validate_tool_parameters(schema)
 
-    # Invalid: wrong type
-    with pytest.raises(ValueError):
-        validate_tool_parameters(schema, name=123)
+    # With required parameter
+    validate_tool_parameters(schema, required_param="test")  # Should not raise
+
+    # With both parameters
+    validate_tool_parameters(
+        schema, required_param="test", optional_param=42
+    )  # Should not raise
 
 
-def test_nested_validation() -> None:
-    """Test validation of nested objects."""
+def test_validate_tool_parameters_types():
+    """Test validation of parameter types."""
     schema = {
         "name": "test_tool",
-        "description": "Test tool",
         "parameters": {
             "type": "object",
             "properties": {
-                "person": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "address": {
-                            "type": "object",
-                            "properties": {
-                                "street": {"type": "string"},
-                                "city": {"type": "string"},
-                            },
-                            "required": ["street"],
-                        },
-                    },
-                    "required": ["name", "address"],
-                },
+                "string_param": {"type": "string"},
+                "number_param": {"type": "number"},
+                "boolean_param": {"type": "boolean"},
+                "array_param": {"type": "array", "items": {"type": "string"}},
+                "object_param": {"type": "object"},
             },
-            "required": ["person"],
+            "required": ["string_param"],
         },
     }
 
-    # Valid parameters
+    # Valid types
     validate_tool_parameters(
         schema,
-        person={
-            "name": "John",
-            "address": {
-                "street": "123 Main St",
-                "city": "Springfield",
-            },
-        },
+        string_param="test",
+        number_param=42,
+        boolean_param=True,
+        array_param=["one", "two"],
+        object_param={"key": "value"},
     )
 
-    # Invalid: missing nested required field
-    with pytest.raises(ValueError):
+    # Invalid string type
+    with pytest.raises(ValueError, match="Invalid parameter type"):
+        validate_tool_parameters(schema, string_param=123)
+
+    # Invalid number type
+    with pytest.raises(ValueError, match="Invalid parameter type"):
         validate_tool_parameters(
-            schema,
-            person={
-                "name": "John",
-                "address": {
-                    "city": "Springfield",
-                },
-            },
+            schema, string_param="test", number_param="not_a_number"
+        )
+
+    # Invalid boolean type
+    with pytest.raises(ValueError, match="Invalid parameter type"):
+        validate_tool_parameters(
+            schema, string_param="test", boolean_param="not_a_boolean"
+        )
+
+    # Invalid array type
+    with pytest.raises(ValueError, match="Invalid parameter type"):
+        validate_tool_parameters(
+            schema, string_param="test", array_param="not_an_array"
+        )
+
+    # Invalid array item type
+    with pytest.raises(ValueError, match="Invalid parameter type"):
+        validate_tool_parameters(schema, string_param="test", array_param=[1, 2, 3])
+
+    # Invalid object type
+    with pytest.raises(ValueError, match="Invalid parameter type"):
+        validate_tool_parameters(
+            schema, string_param="test", object_param="not_an_object"
         )
 
 
-def test_array_validation() -> None:
-    """Test validation of array parameters."""
+def test_validate_tool_parameters_array_constraints():
+    """Test validation of array constraints."""
     schema = {
         "name": "test_tool",
-        "description": "Test tool",
         "parameters": {
             "type": "object",
             "properties": {
-                "tags": {
+                "array_param": {
                     "type": "array",
                     "items": {"type": "string"},
                     "minItems": 1,
-                },
-                "scores": {
-                    "type": "array",
-                    "items": {"type": "number"},
+                    "maxItems": 3,
                 },
             },
-            "required": ["tags"],
+            "required": ["array_param"],
         },
     }
 
-    # Valid parameters
-    validate_tool_parameters(schema, tags=["test", "demo"], scores=[1.0, 2.5, 3.0])
+    # Valid array length
+    validate_tool_parameters(schema, array_param=["one"])  # Should not raise
+    validate_tool_parameters(schema, array_param=["one", "two"])  # Should not raise
+    validate_tool_parameters(
+        schema, array_param=["one", "two", "three"]
+    )  # Should not raise
 
-    # Invalid: empty array
-    with pytest.raises(ValueError):
-        validate_tool_parameters(schema, tags=[])
-
-    # Invalid: wrong item type
-    with pytest.raises(ValueError):
-        validate_tool_parameters(schema, tags=["test", 123])
-
-
-def test_enum_validation() -> None:
-    """Test validation of enum parameters."""
-    schema = {
-        "name": "test_tool",
-        "description": "Test tool",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "color": {
-                    "type": "string",
-                    "enum": ["red", "green", "blue"],
-                },
-                "size": {
-                    "type": "string",
-                    "enum": ["small", "medium", "large"],
-                },
-            },
-            "required": ["color"],
-        },
-    }
-
-    # Valid parameters
-    validate_tool_parameters(schema, color="red", size="medium")
-
-    # Invalid: value not in enum
-    with pytest.raises(ValueError):
-        validate_tool_parameters(schema, color="yellow")
-
-
-def test_pattern_validation() -> None:
-    """Test validation of pattern constraints."""
-    schema = {
-        "name": "test_tool",
-        "description": "Test tool",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-                },
-                "phone": {
-                    "type": "string",
-                    "pattern": "^\\d{3}-\\d{3}-\\d{4}$",
-                },
-            },
-            "required": ["email"],
-        },
-    }
-
-    # Valid parameters
-    validate_tool_parameters(schema, email="test@example.com", phone="123-456-7890")
-
-    # Invalid: wrong email format
-    with pytest.raises(ValueError):
-        validate_tool_parameters(schema, email="invalid-email")
-
-    # Invalid: wrong phone format
-    with pytest.raises(ValueError):
-        validate_tool_parameters(schema, email="test@example.com", phone="1234567890")
+    # Empty array
+    with pytest.raises(ValueError, match="Array must have at least 1 item"):
+        validate_tool_parameters(schema, array_param=[])

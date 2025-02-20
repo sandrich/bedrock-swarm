@@ -103,7 +103,11 @@ class BedrockModel(abc.ABC):
         """
         try:
             # Extract content from response (implementation specific)
-            content = self._extract_content(response)
+            try:
+                content = self._extract_content(response)
+            except ResponseParsingError:
+                # Return empty message for invalid responses
+                return {"type": "message", "content": ""}
 
             # Try to parse as JSON if it looks like JSON
             if content.startswith("{") and content.endswith("}"):

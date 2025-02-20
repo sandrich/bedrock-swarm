@@ -125,7 +125,10 @@ class CurrentTimeTool(BaseTool):
         """
         try:
             # Use local timezone if none specified
-            tz = ZoneInfo(timezone) if timezone else None
+            tz = None
+            if timezone:
+                normalized_tz = self._normalize_timezone(timezone)
+                tz = ZoneInfo(normalized_tz)
 
             # Get current time in specified timezone
             current = datetime.now(tz)

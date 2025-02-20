@@ -5,7 +5,7 @@ This module provides a flexible architecture for supporting multiple Bedrock mod
 
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import boto3
 

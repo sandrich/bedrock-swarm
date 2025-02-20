@@ -2,7 +2,6 @@
 
 import pytest
 
-from bedrock_swarm.exceptions import ToolError
 from bedrock_swarm.tools.calculator import CalculatorTool
 
 
@@ -12,61 +11,111 @@ def calculator() -> CalculatorTool:
     return CalculatorTool()
 
 
-def test_basic_arithmetic(calculator: CalculatorTool) -> None:
+def test_initialization():
+    """Test calculator tool initialization."""
+    # Default initialization
+    calc = CalculatorTool()
+    assert calc.name == "calculator"
+    assert calc.description == "Perform basic arithmetic calculations"
+
+    # Custom initialization
+    calc = CalculatorTool(name="custom_calc", description="Custom calculator")
+    assert calc.name == "custom_calc"
+    assert calc.description == "Custom calculator"
+
+
+def test_schema():
+    """Test calculator tool schema."""
+    calc = CalculatorTool()
+    schema = calc.get_schema()
+
+    assert schema["name"] == "calculator"
+    assert schema["description"] == "Perform basic arithmetic calculations"
+    assert "parameters" in schema
+    assert schema["parameters"]["type"] == "object"
+    assert "expression" in schema["parameters"]["properties"]
+    assert schema["parameters"]["required"] == ["expression"]
+
+
+def test_basic_arithmetic():
     """Test basic arithmetic operations."""
-    # Test addition
-    result = calculator.execute(expression="2 + 2")
-    assert result == "4"
+    calc = CalculatorTool()
 
-    # Test subtraction
-    result = calculator.execute(expression="5 - 3")
-    assert result == "2"
+    # Addition
+    assert calc._execute_impl(expression="2 + 2") == "4"
+    assert calc._execute_impl(expression="0 + 0") == "0"
+    assert calc._execute_impl(expression="-1 + 1") == "0"
 
-    # Test multiplication
-    result = calculator.execute(expression="4 * 3")
-    assert result == "12"
+    # Subtraction
+    assert calc._execute_impl(expression="5 - 3") == "2"
+    assert calc._execute_impl(expression="0 - 0") == "0"
+    assert calc._execute_impl(expression="-1 - -1") == "0"
 
-    # Test division
-    result = calculator.execute(expression="10 / 2")
-    assert result == "5.0"
+    # Multiplication
+    assert calc._execute_impl(expression="3 * 4") == "12"
+    assert calc._execute_impl(expression="0 * 5") == "0"
+    assert calc._execute_impl(expression="-2 * 3") == "-6"
 
-
-def test_complex_expressions(calculator: CalculatorTool) -> None:
-    """Test more complex mathematical expressions."""
-    # Test order of operations
-    result = calculator.execute(expression="2 + 3 * 4")
-    assert result == "14"
-
-    # Test parentheses
-    result = calculator.execute(expression="(2 + 3) * 4")
-    assert result == "20"
-
-    # Test floating point
-    result = calculator.execute(expression="3.14 * 2")
-    assert result == "6.28"
+    # Division
+    assert calc._execute_impl(expression="8 / 2") == "4.0"
+    assert calc._execute_impl(expression="1 / 2") == "0.5"
+    assert calc._execute_impl(expression="-6 / 2") == "-3.0"
 
 
-def test_invalid_expressions(calculator: CalculatorTool) -> None:
+def test_complex_expressions():
+    """Test more complex arithmetic expressions."""
+    calc = CalculatorTool()
+
+    # Parentheses and order of operations
+    assert calc._execute_impl(expression="2 + 3 * 4") == "14"
+    assert calc._execute_impl(expression="(2 + 3) * 4") == "20"
+    assert calc._execute_impl(expression="2 * (3 + 4)") == "14"
+
+    # Multiple operations
+    assert calc._execute_impl(expression="1 + 2 + 3") == "6"
+    assert calc._execute_impl(expression="10 - 5 + 2") == "7"
+    assert calc._execute_impl(expression="2 * 3 * 4") == "24"
+
+    # Decimals
+    assert calc._execute_impl(expression="1.5 + 2.5") == "4.0"
+    assert calc._execute_impl(expression="3.0 * 2") == "6.0"
+
+
+def test_invalid_expressions():
     """Test handling of invalid expressions."""
-    # Test division by zero
-    with pytest.raises(ToolError, match="Invalid expression: division by zero"):
-        calculator.execute(expression="1/0")
+    calc = CalculatorTool()
 
-    # Test invalid characters
-    with pytest.raises(ToolError, match="Invalid characters in expression"):
-        calculator.execute(expression="2 + abc")
+    # Invalid characters
+    with pytest.raises(ValueError, match="Invalid characters in expression"):
+        calc._execute_impl(expression="2 + a")
+    with pytest.raises(ValueError, match="Invalid characters in expression"):
+        calc._execute_impl(expression="print(2)")
+    with pytest.raises(ValueError, match="Invalid characters in expression"):
+        calc._execute_impl(expression="os.system('ls')")
+
+    # Invalid syntax
+    with pytest.raises(ValueError, match="Invalid expression"):
+        calc._execute_impl(expression="2 +")
+    with pytest.raises(ValueError, match="Invalid expression"):
+        calc._execute_impl(expression="* 2")
+
+    # Division by zero
+    with pytest.raises(ValueError, match="Invalid expression"):
+        calc._execute_impl(expression="1/0")
 
 
-def test_whitespace_handling(calculator: CalculatorTool) -> None:
+def test_whitespace_handling():
     """Test handling of whitespace in expressions."""
-    # Test no spaces
-    result = calculator.execute(expression="2+2")
-    assert result == "4"
+    calc = CalculatorTool()
 
-    # Test extra spaces
-    result = calculator.execute(expression="  2   +   2  ")
-    assert result == "4"
+    # No spaces
+    assert calc._execute_impl(expression="2+2") == "4"
 
-    # Test invalid whitespace
-    with pytest.raises(ToolError, match="Invalid characters in expression"):
-        calculator.execute(expression="2 +\n2")
+    # Extra spaces
+    assert calc._execute_impl(expression="  2  +  2  ") == "4"
+
+    # Tabs and newlines (should be invalid)
+    with pytest.raises(ValueError, match="Invalid characters in expression"):
+        calc._execute_impl(expression="2 +\t2")
+    with pytest.raises(ValueError, match="Invalid characters in expression"):
+        calc._execute_impl(expression="2 +\n2")
