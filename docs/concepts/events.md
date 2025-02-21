@@ -133,18 +133,18 @@ print(formatted_chain)
 
 ```python
 # Agency automatically creates events
-agency = Agency(specialists=[calculator, time_expert])
+agency = Agency(agents=[calculator, time_expert])
 
 # Get event trace
 trace = agency.get_event_trace()
 print(trace)
 
 # Sample output:
-# [12:16:17.929] RUN_START - Agent: coordinator
-#   message: What is 15 * 7?
-# [12:16:20.780] TOOL_START - Agent: coordinator
-#   tool_name: SendMessage
-#   arguments: {"recipient": "calculator", "message": "Calculate 15 * 7"}
+# [12:16:17.929] RUN_START - Agent: calculator
+#   message: Calculate 15 * 7
+# [12:16:20.780] TOOL_START - Agent: calculator
+#   tool_name: CalculatorTool
+#   arguments: {"x": 15, "y": 7}
 ```
 
 ### 2. With Threads

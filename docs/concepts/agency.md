@@ -1,6 +1,6 @@
 # Understanding the Agency
 
-The Agency is the central orchestrator in Bedrock Swarm that manages communication between agents and coordinates their activities. Think of it as a virtual office where specialized AI agents work together to solve problems.
+The Agency is the central orchestrator in Bedrock Swarm that manages communication between agents and coordinates their activities. Think of it as a virtual office where AI agents work together to solve problems.
 
 ## Agency Architecture
 
@@ -12,7 +12,6 @@ classDiagram
         +threads: Dict[str, Thread]
         +event_system: EventSystem
         +shared_memory: SimpleMemory
-        +coordinator: BedrockAgent
         +create_thread()
         +get_completion()
         +get_event_trace()
@@ -41,45 +40,52 @@ classDiagram
 
 ## Key Components
 
-### 1. Coordinator Agent
+### 1. Agents
 
-Every Agency automatically creates a coordinator agent that:
-- Acts as the main interface with users
-- Routes requests to appropriate specialists
-- Manages complex tasks requiring multiple agents
+Each agent in the agency:
+- Has specific capabilities and tools
+- Can communicate with other agents
+- Maintains its own memory and context
+- Processes requests independently
 
 ```python
-agency = Agency(specialists=[calculator, time_expert])
-# Coordinator is automatically created and configured
+# Create an agent with specific capabilities
+calculator = BedrockAgent(
+    name="calculator",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    tools=[CalculatorTool()]
+)
+
+# Add to agency
+agency = Agency(agents=[calculator])
 ```
 
 ### 2. Communication Paths
 
-The Agency manages who can talk to whom through communication paths:
+The Agency manages communication between agents:
 
 ```mermaid
 graph LR
-    User[User] <--> Coordinator
-    Coordinator --> Calculator
-    Coordinator --> TimeExpert
-    Coordinator --> OtherSpecialist
+    User[User] <--> Agency
+    Agency <--> Calculator
+    Agency <--> TimeExpert
+    Calculator <--> TimeExpert
 ```
 
-### 3. Message Routing
+### 3. Message Processing
 
 When a message comes in:
-1. The coordinator receives it first
-2. Analyzes the task requirements
-3. Routes to appropriate specialists using the SendMessage tool
-4. Combines responses if needed
+1. Agency routes to appropriate agent
+2. Agent processes the request
+3. Uses tools or communicates with other agents if needed
+4. Returns response to user
 
 ```python
-# Example of how a message flows
-response = agency.get_completion("What is 15 * 7?")
-# 1. Coordinator receives query
-# 2. Recognizes it's a calculation
-# 3. Routes to calculator agent
-# 4. Returns formatted response
+# Example of message processing
+response = agency.process_request(
+    "What is 15 * 7?",
+    agent_name="calculator"
+)
 ```
 
 ## Creating an Agency
@@ -87,20 +93,26 @@ response = agency.get_completion("What is 15 * 7?")
 ### Basic Setup
 
 ```python
-from bedrock_swarm.agency.agency import Agency
-from bedrock_swarm.agents.base import BedrockAgent
-from bedrock_swarm.memory.base import SimpleMemory
+from bedrock_swarm.agency import Agency
+from bedrock_swarm.agents import BedrockAgent
+from bedrock_swarm.memory import SimpleMemory
 
-# Create specialists
+# Create agents
 calculator = BedrockAgent(
     name="calculator",
     model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
     tools=[CalculatorTool()]
 )
 
+time_expert = BedrockAgent(
+    name="time_expert",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    tools=[TimezoneTool()]
+)
+
 # Create agency
 agency = Agency(
-    specialists=[calculator],
+    agents=[calculator, time_expert],
     shared_memory=SimpleMemory(),  # Optional
     shared_instructions="Work together to solve tasks"  # Optional
 )
@@ -108,31 +120,31 @@ agency = Agency(
 
 ### Advanced Configuration
 
-You can configure more complex communication patterns:
+Configure complex communication patterns:
 
 ```python
 # Create agency with specific communication paths
 agency = Agency(
-    agency_chart=[
-        coordinator,  # Can talk to user
-        [coordinator, time_expert],  # Coordinator can talk to Time Expert
-        [coordinator, calculator],   # Coordinator can talk to Calculator
-    ],
+    agents=[calculator, time_expert],
+    communication_paths={
+        "calculator": ["time_expert"],  # Calculator can talk to Time Expert
+        "time_expert": ["calculator"]   # Time Expert can talk to Calculator
+    },
     shared_memory=shared_memory
 )
 ```
 
 ## Best Practices
 
-1. **Specialist Design**
-   - Create focused specialists with clear responsibilities
+1. **Agent Design**
+   - Create focused agents with clear responsibilities
    - Provide specific system prompts
    - Equip with relevant tools only
 
 2. **Communication Flow**
-   - Keep the coordinator as the main routing point
-   - Avoid creating direct communication between specialists
-   - Use shared memory for information that multiple agents need
+   - Define clear communication paths
+   - Use shared memory for common information
+   - Keep agent interactions focused
 
 3. **Error Handling**
    - Monitor the event trace for issues
@@ -149,11 +161,11 @@ trace = agency.get_event_trace()
 print(trace)
 
 # Sample output:
-# [12:16:17.929] RUN_START - Agent: coordinator
-#   message: What is 15 * 7?
-# [12:16:20.780] TOOL_START - Agent: coordinator
-#   tool_name: SendMessage
-#   arguments: {"recipient": "calculator", "message": "Calculate 15 * 7"}
+# [12:16:17.929] RUN_START - Agent: calculator
+#   message: Calculate 15 * 7
+# [12:16:20.780] TOOL_START - Agent: calculator
+#   tool_name: CalculatorTool
+#   arguments: {"x": 15, "y": 7}
 # ...
 ```
 
@@ -162,14 +174,11 @@ print(trace)
 ### 1. Task Decomposition
 ```python
 # Complex query handling
-response = agency.get_completion(
+response = agency.process_request(
     "If it's 3:00 PM in New York, and a meeting lasts 2.5 hours, "
-    "what time will it end in Tokyo?"
+    "what time will it end in Tokyo?",
+    agent_name="time_expert"
 )
-# Coordinator breaks this into:
-# 1. Get current time conversion (time_expert)
-# 2. Calculate duration (calculator)
-# 3. Get final time (time_expert)
 ```
 
 ### 2. Shared Context
@@ -182,7 +191,7 @@ agency.shared_memory.shared_state.set("timezone_from", "America/New_York")
 ### 3. Multi-Step Tasks
 ```python
 # Create a dedicated thread for multi-step tasks
-thread = agency.create_thread()
+thread = agency.create_thread(agent_name="time_expert")
 thread.process_message("Step 1: Calculate the time difference")
 thread.process_message("Step 2: Add the duration")
 ```

@@ -4,15 +4,15 @@ A framework for building multi-agent systems using Amazon Bedrock.
 
 ## Features
 
-- **Multi-Agent Communication**: Coordinate multiple specialized agents to solve complex tasks
-- **Coordinator-Based Architecture**: Smart task planning and delegation
+- **Multi-Agent Communication**: Enable direct communication between autonomous agents
+- **Flexible Architecture**: Build custom agent networks for complex tasks
 - **Event Tracing**: Comprehensive tracing of all agent interactions and tool executions
 - **Tool Integration**: Easy integration of custom tools and capabilities
-- **Flexible Memory**: Configurable memory systems for agent context
+- **Memory Management**: Configurable memory systems for agent context
 
 ## Documentation
 
-- [Architecture](concepts/architecture.md): Learn about the coordinator-based design and communication flow
+- [Architecture](concepts/architecture.md): Learn about the multi-agent design and communication flow
 - [Examples](examples/index.md): See practical examples of using the framework
 - [API Reference](api/index.md): Detailed API documentation
 
@@ -35,7 +35,7 @@ from bedrock_swarm.agency import Agency
 from bedrock_swarm.agents import BedrockAgent
 from bedrock_swarm.tools import CalculatorTool
 
-# Create a specialist agent
+# Create an agent with calculator capability
 calculator = BedrockAgent(
     name="calculator",
     model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
@@ -43,8 +43,8 @@ calculator = BedrockAgent(
     system_prompt="You are a mathematical specialist."
 )
 
-# Create agency with the specialist
-agency = Agency(specialists=[calculator])
+# Create agency with the agent
+agency = Agency(agents=[calculator])
 
 # Process a request
 response = agency.process_request("What is 15 * 7?")
@@ -58,41 +58,39 @@ Contributions are welcome! Please read our [Contributing Guide](development/cont
 ```mermaid
 graph TD
     A[User Query] --> B[Agency]
-    B --> C[Coordinator Agent]
-    C --> D[Calculator Agent]
-    C --> E[Time Expert Agent]
-    C --> F[Other Specialists...]
-    D --> G[Tools]
-    E --> G
-    F --> G
-    G --> C
-    C --> B
-    B --> H[User Response]
+    B --> C[Agent 1]
+    B --> D[Agent 2]
+    B --> E[Agent 3]
+    C --> F[Tools]
+    D --> F
+    E --> F
+    C <--> D
+    D <--> E
+    C <--> E
+    B --> G[User Response]
 ```
 
 ## Key Features
 
-- **Multi-Agent Architecture**: Create specialized agents that work together to solve complex tasks
+- **Multi-Agent Architecture**: Create autonomous agents that communicate and collaborate
 - **Event-Driven Communication**: Track and monitor all agent interactions and tool executions
 - **Built-in Tool System**: Easily extend agents with custom tools and capabilities
-- **Memory Management**: Share information between agents with flexible memory systems
+- **Memory Management**: Flexible memory systems for storing agent context and shared information
 - **AWS Bedrock Integration**: Leverage powerful language models through Amazon Bedrock
 
 ## Core Concepts
 
-1. **Agency**: The main orchestrator that manages communication between agents
-2. **Agents**: Specialized AI assistants with specific capabilities
+1. **Agency**: The main orchestrator that manages agent communication
+2. **Agents**: Autonomous AI assistants with specific capabilities
 3. **Tools**: Functions that agents can use to perform specific tasks
-4. **Threads**: Conversation flows between users and agents
-5. **Memory**: System for storing and sharing information between agents
-6. **Events**: Detailed tracking of all system interactions
+4. **Memory**: System for storing agent context and shared information
+5. **Events**: Detailed tracking of all system interactions
 
 ## Next Steps
 
 - [Understanding the Agency](concepts/agency.md)
 - [Working with Agents](concepts/agents.md)
 - [Using Tools](concepts/tools.md)
-- [Managing Threads](concepts/threads.md)
 - [Memory Systems](concepts/memory.md)
 - [Event System](concepts/events.md)
 - [Examples](examples/index.md)

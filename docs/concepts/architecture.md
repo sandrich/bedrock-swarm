@@ -1,28 +1,29 @@
 # Architecture
 
-The Bedrock Swarm uses a coordinator-based architecture to manage communication between specialized agents. This design allows for complex tasks to be broken down into smaller steps and executed by the most appropriate specialists.
+The Bedrock Swarm is a framework for building multi-agent systems using Amazon Bedrock. It provides a flexible architecture that enables direct agent-to-agent communication and tool execution.
 
 ## Core Components
 
 ### Agency
 The central orchestrator that:
 - Manages communication between agents
-- Creates and maintains the coordinator agent
-- Handles request processing and plan execution
+- Handles request processing
 - Manages shared memory and event tracing
+- Coordinates tool execution and responses
 
-### Coordinator
-A specialized agent that:
-- Receives user requests
-- Creates structured execution plans
-- Delegates tasks to appropriate specialists
-- Formats final responses
+### Agents
+Autonomous agents that:
+- Process user requests directly
+- Execute tools within their capabilities
+- Communicate with other agents as needed
+- Maintain their own context and memory
 
-### Specialists
-Domain-specific agents that:
-- Handle specific types of tasks (e.g., calculations, time operations)
-- Execute tools within their domain
-- Return results to the coordinator
+### Tools
+Reusable components that:
+- Provide specific functionality to agents
+- Handle input validation and processing
+- Return structured outputs
+- Can be shared across agents
 
 ## Communication Flow
 
@@ -30,96 +31,80 @@ Domain-specific agents that:
 sequenceDiagram
     participant User
     participant Agency
-    participant Coordinator
-    participant Calculator
-    participant TimeExpert
+    participant Agent1
+    participant Agent2
+    participant Tools
 
-    User->>Agency: process_request("What time will it be 15 * 7 minutes from now?")
-    Agency->>Coordinator: create_plan(request)
+    User->>Agency: process_request()
+    Agency->>Agent1: handle_request()
 
-    Note over Coordinator: Creates structured plan<br/>with calculation and time steps
+    Note over Agent1: Processes request and<br/>determines needed tools/agents
 
-    Coordinator-->>Agency: Returns validated plan
+    Agent1->>Tools: execute_tool()
+    Tools-->>Agent1: tool_result
 
-    Agency->>Calculator: execute_step("Calculate 15 * 7")
-    Calculator-->>Agency: "105"
+    Agent1->>Agent2: request_assistance()
+    Agent2->>Tools: execute_tool()
+    Tools-->>Agent2: tool_result
+    Agent2-->>Agent1: assistance_response
 
-    Agency->>TimeExpert: execute_step("Calculate time 105 minutes from now")
-    TimeExpert-->>Agency: "8:19 PM UTC"
-
-    Agency->>Coordinator: format_response(results)
-    Coordinator-->>Agency: Formatted natural response
-    Agency-->>User: "In 105 minutes, it will be 8:19 PM UTC"
+    Agent1-->>Agency: final_response
+    Agency-->>User: formatted_response
 ```
 
 ## Request Processing Flow
 
-1. **Plan Creation Phase**
+1. **Request Handling**
    - User sends request to Agency
-   - Agency forwards to Coordinator
-   - Coordinator creates structured plan using `create_plan` tool
-   - Plan is validated and stored
+   - Agency routes to appropriate agent
+   - Agent processes request and determines actions
 
 2. **Execution Phase**
-   - Agency executes each step in sequence
-   - Specialists are called with their specific tasks
-   - Results are collected and dependencies managed
+   - Agent executes necessary tools
+   - Communicates with other agents if needed
+   - Maintains context through memory system
    - Events are traced for debugging
 
-3. **Response Formatting Phase**
-   - Results are sent back to Coordinator
-   - Coordinator formats natural response
-   - Final response returned to user
+3. **Response Phase**
+   - Agent formulates response
+   - Agency formats and returns to user
 
-## Example Plan Structure
+## Memory and State Management
 
-```json
-{
-  "steps": [
-    {
-      "step_number": 1,
-      "description": "Calculate 15 * 7",
-      "specialist": "calculator"
-    },
-    {
-      "step_number": 2,
-      "description": "Calculate the time {MINUTES} minutes from now",
-      "specialist": "time_expert",
-      "requires_results_from": [1]
-    }
-  ],
-  "final_output_format": "In {MINUTES} minutes, the time will be {TIME}"
-}
-```
+The system uses a flexible memory system that allows:
+- Per-agent memory storage
+- Shared memory across agents
+- Persistent context maintenance
+- Event history tracking
 
 ## Event Tracing
 
-The Agency includes comprehensive event tracing to help debug and monitor the execution flow:
+The Agency includes comprehensive event tracing:
 
 ```
-[timestamp] run_start - Agent: coordinator
-[timestamp] tool_start - Agent: coordinator
-[timestamp] tool_complete - Agent: coordinator
-[timestamp] execution_start - Agent: agency
-[timestamp] step_complete - Agent: calculator
-[timestamp] step_complete - Agent: time_expert
-[timestamp] execution_complete - Agent: agency
-[timestamp] response_complete - Agent: agency
+[timestamp] request_received - Agency
+[timestamp] agent_processing - Agent: agent1
+[timestamp] tool_execution - Agent: agent1, Tool: calculator
+[timestamp] agent_communication - From: agent1, To: agent2
+[timestamp] response_complete - Agency
 ```
 
 ## Best Practices
 
-1. **Specialist Design**
-   - Keep specialists focused on a single domain
-   - Provide clear tool descriptions
-   - Handle errors gracefully
+1. **Agent Design**
+   - Define clear agent responsibilities
+   - Implement proper error handling
+   - Use appropriate memory management
+   - Document agent capabilities
 
-2. **Plan Creation**
-   - Break complex tasks into atomic steps
-   - Specify clear dependencies
-   - Use descriptive step descriptions
-
-3. **Tool Implementation**
+2. **Tool Implementation**
    - Validate inputs thoroughly
-   - Return clear, structured outputs
+   - Return structured outputs
    - Include helpful error messages
+   - Document expected behavior
+
+3. **Memory Management**
+   - Use appropriate memory types
+   - Clean up unused memory
+   - Handle memory conflicts
+   - Document memory patterns

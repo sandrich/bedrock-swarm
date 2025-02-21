@@ -152,15 +152,38 @@ memory.add_message(Message(
 
 ### 1. Message Processing
 
-```python
-# Direct interaction with agent
-response = agent.generate("What is 2 + 2?")
-print(response)  # Will use calculator tool to compute
+Agents process messages through threads, which manage the conversation flow:
 
-# Through a thread
-thread = Thread(agent=agent)
-response = thread.process_message("What is 2 + 2?")
+```python
+from bedrock_swarm.agency import Agency, Thread
+from bedrock_swarm.agents import BedrockAgent
+
+# Create an agent
+agent = BedrockAgent(
+    name="calculator",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    tools=[CalculatorTool()]
+)
+
+# Create agency
+agency = Agency(agents=[agent])
+
+# Process request - agency manages thread creation
+response = agency.process_request("What is 2 + 2?", agent_name="calculator")
+
+# The agency will:
+# 1. Create or reuse a thread for this agent
+# 2. Process the message through the thread
+# 3. Handle tool executions if needed
+# 4. Return the final response
 ```
+
+Threads provide:
+- Conversation history tracking
+- Tool execution management
+- Event recording
+- Error handling
+- Context maintenance
 
 ### 2. Tool Usage
 

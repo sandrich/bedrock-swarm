@@ -86,20 +86,17 @@ nav:
     - Quick Start: getting-started/quickstart.md
     - Installation: getting-started/installation.md
     - Configuration: getting-started/configuration.md
-  - Architecture:
-    - Overview: concepts/architecture.md
-    - Communication Flow: concepts/communication.md
-    - Event System: concepts/events.md
   - Core Concepts:
+    - Architecture: concepts/architecture.md
     - Agency: concepts/agency.md
     - Agents: concepts/agents.md
-    - Models: concepts/models.md
     - Tools: concepts/tools.md
     - Memory: concepts/memory.md
-    - Threads: concepts/threads.md
     - Events: concepts/events.md
-    - Coordinator: concepts/coordinator.md
-    - Specialists: concepts/specialists.md
+    - Configuration: concepts/config.md
+    - Logging: concepts/logging.md
+    - Types: concepts/types.md
+    - Models: concepts/models.md
   - Examples:
     - Overview: examples/index.md
     - Basic Usage: examples/basic.md
@@ -114,8 +111,8 @@ nav:
       - Thread: api/agency/thread.md
       - Run: api/agency/run.md
       - Events: api/agency/events.md
+      - Memory: api/agency/memory.md
       - Agents: api/agency/agents.md
-      - Base Agent: api/agents/base.md
     - Models:
       - Overview: api/models/index.md
       - Base Model: api/models/base.md
@@ -130,6 +127,8 @@ nav:
       - Time: api/tools/time.md
       - Send Message: api/tools/send_message.md
       - Validation: api/tools/validation.md
+    - Memory:
+      - Overview: api/memory.md
   - Development:
     - Overview: development/index.md
     - Testing: development/testing.md
