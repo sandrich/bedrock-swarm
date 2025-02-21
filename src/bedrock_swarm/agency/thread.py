@@ -96,6 +96,13 @@ class Thread:
         """
         logger.debug(f"Thread {self.id}: Processing message: {content}")
 
+        # Record user message
+        self._record_message(
+            "user",
+            content,
+            metadata={"type": "user_message", "timestamp": datetime.now().isoformat()},
+        )
+
         # Create new run
         self.current_run = Run()
         self.runs.append(self.current_run)
@@ -126,10 +133,34 @@ class Thread:
                     {"type": "tool_calls", "tool_calls": response["tool_calls"]}
                 )
 
+                # Record tool call intent
+                self._record_message(
+                    "assistant",
+                    json.dumps(response["tool_calls"]),
+                    metadata={
+                        "type": "tool_call_intent",
+                        "run_id": self.current_run.id,
+                        "timestamp": datetime.now().isoformat(),
+                        "tool_calls": response["tool_calls"],
+                    },
+                )
+
                 try:
                     # Execute tools and get final response
                     tool_outputs = self._execute_tools(response["tool_calls"])
                     logger.debug(f"Thread {self.id}: Tool outputs: {tool_outputs}")
+
+                    # Record tool execution results
+                    for output in tool_outputs:
+                        self._record_message(
+                            "system",
+                            str(output["output"]),
+                            metadata={
+                                "type": "tool_result",
+                                "tool_call_id": output["tool_call_id"],
+                                "timestamp": datetime.now().isoformat(),
+                            },
+                        )
 
                     # Get final response incorporating tool results
                     logger.debug(
@@ -148,6 +179,18 @@ class Thread:
                 logger.debug(
                     f"Thread {self.id}: Using direct response: {response_text}"
                 )
+
+            # Record assistant's response
+            self._record_message(
+                "assistant",
+                response_text,
+                metadata={
+                    "type": "assistant_response",
+                    "run_id": self.current_run.id,
+                    "timestamp": datetime.now().isoformat(),
+                    "has_tool_calls": bool(response.get("tool_calls")),
+                },
+            )
 
             # Create agent complete event
             self.event_system.create_event(
@@ -168,6 +211,17 @@ class Thread:
             logger.error(f"Thread {self.id}: Error processing message: {error_msg}")
             if self.current_run:
                 self.current_run.fail(error_msg)
+
+            # Record error message
+            self._record_message(
+                "system",
+                error_msg,
+                metadata={
+                    "type": "error",
+                    "run_id": self.current_run.id if self.current_run else None,
+                    "timestamp": datetime.now().isoformat(),
+                },
+            )
 
             # Create error event
             self.event_system.create_event(
@@ -308,22 +362,40 @@ class Thread:
     def _get_final_response(
         self, original_message: str, tool_outputs: List[ToolOutput]
     ) -> Dict[str, str]:
-        """Get final response after tool execution."""
-        # Format tool results in a more natural way
+        """Get final response after tool execution.
+
+        This method builds a comprehensive prompt that includes:
+        1. Recent conversation history for context
+        2. The original message
+        3. Tool execution results
+        4. Instructions for response formatting
+        """
+        # Get recent conversation history (last 5 messages)
+        recent_history = self.get_context_window(5)
+        history_context = []
+        for msg in recent_history[:-1]:  # Exclude the current message
+            history_context.append(f"{msg.role}: {msg.content}")
+
+        # Format tool results
         tool_results = []
         for output in tool_outputs:
             tool_results.append(f"Tool result: {output['output']}")
 
-        # Create a prompt that encourages a natural language response
+        # Build comprehensive prompt with history and context
         prompt = (
-            f"<context>\n"
-            f"Original question: {original_message}\n"
+            f"<conversation_history>\n"
+            f"{chr(10).join(history_context) if history_context else 'No previous context'}\n"
+            f"</conversation_history>\n\n"
+            f"<current_context>\n"
+            f"Current question: {original_message}\n"
             f"Tool results:\n{chr(10).join(tool_results)}\n"
-            f"</context>\n\n"
+            f"</current_context>\n\n"
             f"<instructions>\n"
-            f"Based on the tool results above, provide a natural language response to the original question.\n"
-            f"Your response should be clear, concise, and directly answer the question.\n"
-            f"Format your response as a proper JSON message object.\n"
+            f"Based on the conversation history and tool results above:\n"
+            f"1. Provide a natural language response that directly answers the current question\n"
+            f"2. Maintain context from the previous conversation if relevant\n"
+            f"3. Format your response as a proper JSON message object\n"
+            f"4. Be concise but complete in your response\n"
             f"</instructions>"
         )
 
@@ -338,14 +410,14 @@ class Thread:
                 # If we get another tool call, convert it to a message
                 return {
                     "type": "message",
-                    "content": "Based on the tool results: "
+                    "content": "Based on the tool results and conversation history: "
                     + str(tool_results[0] if tool_results else "No results available"),
                 }
 
         # If we get an invalid response, create a message from the tool results
         return {
             "type": "message",
-            "content": "Based on the tool results: "
+            "content": "Based on the tool results and conversation history: "
             + str(tool_results[0] if tool_results else "No results available"),
         }
 

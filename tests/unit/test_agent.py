@@ -305,3 +305,111 @@ def test_generate_error_handling(agent: BedrockAgent, mock_model: MagicMock) -> 
 
         with pytest.raises(Exception, match="Client error"):
             agent.generate("Test message")
+
+
+def test_prompt_building_with_history(agent: BedrockAgent) -> None:
+    """Test prompt building with conversation history."""
+    # Add messages to memory
+    messages = [
+        Message(
+            role="user",
+            content="Previous question",
+            timestamp=datetime.now(),
+            metadata={"type": "user_message"},
+        ),
+        Message(
+            role="assistant",
+            content="Previous answer",
+            timestamp=datetime.now(),
+            metadata={"type": "assistant_response"},
+        ),
+        Message(
+            role="system",
+            content="Tool result: data",
+            timestamp=datetime.now(),
+            metadata={"type": "tool_result", "tool_call_id": "123"},
+        ),
+    ]
+    for msg in messages:
+        agent.memory.add_message(msg)
+
+    # Build prompt
+    prompt = agent._build_prompt("Current question")
+
+    # Verify history is included
+    assert "Previous question" in prompt
+    assert "Previous answer" in prompt
+    assert "Tool result: data" in prompt
+    assert "[Tool Result: 123]" in prompt
+    assert "Current question" in prompt
+
+
+def test_generate_with_memory_integration(agent: BedrockAgent) -> None:
+    """Test generate method with memory integration."""
+    with patch.object(agent.model, "invoke") as mock_invoke:
+        # Mock model response
+        mock_invoke.return_value = {"type": "message", "content": "Test response"}
+
+        # Generate response
+        agent.generate("Test message")
+
+        # Verify message was recorded in memory
+        messages = agent.memory.get_messages()
+        assert len(messages) == 2  # User message and assistant response
+
+        # Verify user message
+        user_msg = next(msg for msg in messages if msg.role == "user")
+        assert user_msg.content == "Test message"
+        assert user_msg.metadata["type"] == "user_message"
+        assert user_msg.metadata["agent"] == agent.name
+
+        # Verify assistant response
+        assistant_msg = next(msg for msg in messages if msg.role == "assistant")
+        assert assistant_msg.content == "Test response"
+        assert assistant_msg.metadata["type"] == "assistant_response"
+        assert assistant_msg.metadata["agent"] == agent.name
+
+
+def test_generate_with_tool_calls(agent: BedrockAgent) -> None:
+    """Test generate method with tool calls and memory recording."""
+    with patch.object(agent.model, "invoke") as mock_invoke:
+        # Mock tool call response
+        tool_calls = [{"id": "call_1", "name": "test_tool"}]
+        mock_invoke.return_value = {"type": "tool_call", "tool_calls": tool_calls}
+
+        # Generate response
+        agent.generate("Test message")
+
+        # Verify tool call was recorded in memory
+        messages = agent.memory.get_messages()
+        assert len(messages) == 2  # User message and tool call intent
+
+        # Verify tool call message
+        tool_msg = next(
+            msg
+            for msg in messages
+            if msg.metadata and msg.metadata.get("type") == "tool_call_intent"
+        )
+        assert tool_msg.role == "assistant"
+        assert tool_msg.metadata["tool_calls"] == tool_calls
+        assert tool_msg.metadata["agent"] == agent.name
+
+
+def test_memory_cleanup(agent: BedrockAgent) -> None:
+    """Test memory size limits and cleanup."""
+    # Add more messages than the default limit
+    for i in range(1100):  # Default limit is 1000
+        agent.memory.add_message(
+            Message(
+                role="user",
+                content=f"Message {i}",
+                timestamp=datetime.now(),
+                metadata={"type": "user_message", "index": i},
+            )
+        )
+
+    # Verify memory size is enforced
+    messages = agent.memory.get_messages()
+    assert len(messages) == 1000
+    assert messages[0].metadata["index"] == 100  # First 100 should be removed
+    assert messages[-1].metadata["index"] == 1099  # Last message should be present

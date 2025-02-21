@@ -5,6 +5,7 @@ This module provides a flexible architecture for supporting multiple Bedrock mod
 
 import json
 import logging
+from datetime import datetime
 from typing import List, Optional
 
 import boto3
@@ -80,7 +81,15 @@ class BedrockAgent:
             raise InvalidModelError(str(e))
 
     def _build_prompt(self, message: str) -> str:
-        """Build the complete prompt including context."""
+        """Build the complete prompt including context and conversation history.
+
+        This method builds a comprehensive prompt that includes:
+        1. System prompt and role context
+        2. Available tools and their schemas
+        3. Recent conversation history
+        4. Response format instructions
+        5. Current message
+        """
         prompt = []
 
         # Add system prompt if provided
@@ -99,6 +108,20 @@ class BedrockAgent:
                 prompt.append(f"  Schema: {json.dumps(schema, indent=2)}")
             prompt.append("</tools>")
 
+        # Add conversation history from memory
+        recent_messages = self.memory.get_messages()[-5:]  # Get last 5 messages
+        if recent_messages:
+            prompt.append("\n<conversation_history>")
+            for msg in recent_messages:
+                # Include metadata about tool usage if available
+                tool_info = ""
+                if msg.metadata and msg.metadata.get("type") == "tool_result":
+                    tool_info = (
+                        f" [Tool Result: {msg.metadata.get('tool_call_id', 'unknown')}]"
+                    )
+                prompt.append(f"{msg.role}{tool_info}: {msg.content}")
+            prompt.append("</conversation_history>")
+
         # Add response format instructions using XML
         prompt.extend(
             [
@@ -115,6 +138,8 @@ class BedrockAgent:
                 "- Never include explanations or text outside the JSON object",
                 "- Tool arguments must be a valid JSON object, not a string",
                 "- Respond with exactly one complete JSON object",
+                "- Maintain conversation context from history",
+                "- Reference previous tool results when relevant",
                 "</rules>",
                 "</response_format>",
                 f"\n<input>{message}</input>",
@@ -128,6 +153,12 @@ class BedrockAgent:
     def generate(self, message: str) -> AgentResponse:
         """Generate a response to a message.
 
+        This method:
+        1. Records the incoming message in memory
+        2. Generates a response using the model
+        3. Records the response and any tool calls in memory
+        4. Returns the processed response
+
         Args:
             message: Message to respond to
 
@@ -135,6 +166,16 @@ class BedrockAgent:
             Response containing either tool calls or direct message
         """
         logger.debug(f"Agent {self.name} generating response for message: {message}")
+
+        # Record incoming message in memory
+        self.memory.add_message(
+            Message(
+                role="user",
+                content=message,
+                timestamp=datetime.now(),
+                metadata={"type": "user_message", "agent": self.name},
+            )
+        )
 
         # Get bedrock client
         client = self.session.client(
@@ -147,7 +188,33 @@ class BedrockAgent:
         response = self.model.invoke(client=client, message=prompt)
         logger.debug(f"Raw model response: {response}")
 
-        # Return the processed response directly
+        # Record the response in memory with appropriate metadata
+        if response.get("type") == "tool_call":
+            # Record tool call intent
+            self.memory.add_message(
+                Message(
+                    role="assistant",
+                    content=json.dumps(response["tool_calls"]),
+                    timestamp=datetime.now(),
+                    metadata={
+                        "type": "tool_call_intent",
+                        "agent": self.name,
+                        "tool_calls": response["tool_calls"],
+                    },
+                )
+            )
+        else:
+            # Record normal message response
+            self.memory.add_message(
+                Message(
+                    role="assistant",
+                    content=response.get("content", ""),
+                    timestamp=datetime.now(),
+                    metadata={"type": "assistant_response", "agent": self.name},
+                )
+            )
+
+        # Return the processed response
         return response
 
     def _format_prompt(self, message: str, history: List[Message]) -> str:

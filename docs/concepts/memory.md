@@ -1,333 +1,213 @@
-# Memory Systems
+# Memory System
 
-Memory in Bedrock Swarm allows agents to retain information across interactions and share context between different components of the system. The memory system manages both conversation history and shared state.
+The Bedrock Swarm memory system provides sophisticated conversation history management and context preservation across agent interactions. This document explains how the memory system works and how to use it effectively.
 
-## Memory Architecture
+## Overview
 
-```mermaid
-classDiagram
-    class BaseMemory {
-        <<abstract>>
-        +add_message()
-        +get_messages()
-        +get_last_message()
-        +clear()
-    }
+The memory system is responsible for:
+- Maintaining conversation history
+- Recording tool executions and their results
+- Preserving context across interactions
+- Managing thread-specific conversations
+- Enforcing memory size limits
+- Supporting metadata-rich message storage
 
-    class SimpleMemory {
-        -messages: Dict[str, List[Message]]
-        -max_size: int
-        +shared_state: SharedState
-        +add_message()
-        +get_messages()
-        +get_last_message()
-        +clear()
-    }
+## Core Components
 
-    class SharedState {
-        -data: Dict[str, Any]
-        +set()
-        +get()
-        +clear()
-    }
+### Message
 
-    class Message {
-        +role: str
-        +content: str
-        +timestamp: datetime
-        +thread_id: str
-        +metadata: Dict
-    }
-
-    BaseMemory <|-- SimpleMemory
-    SimpleMemory "1" --> "1" SharedState : has
-    SimpleMemory "1" --> "*" Message : stores
-```
-
-## Memory Components
-
-### 1. Messages
+Messages are the fundamental unit of memory storage. Each message includes:
 
 ```python
-from datetime import datetime
-from bedrock_swarm.memory.base import Message
-
-# Create a message
-message = Message(
-    role="user",
-    content="Remember this information",
-    timestamp=datetime.now(),
-    thread_id="thread_123",
-    metadata={
-        "importance": "high",
-        "category": "instruction"
-    }
-)
+@dataclass
+class Message:
+    role: str  # 'user', 'assistant', or 'system'
+    content: str
+    timestamp: datetime
+    thread_id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 ```
 
-### 2. Simple Memory
+### Memory Types
 
+1. **SimpleMemory**: The default implementation that provides:
+   - Thread-based message organization
+   - Size-limited message storage (default 1000 messages per thread)
+   - Message type filtering
+   - Conversation summarization
+   - Tool result tracking
+
+2. **BaseMemory**: An abstract base class for implementing custom memory systems
+
+## Key Features
+
+### Message Recording
+
+The system automatically records:
+- User messages with metadata
+- Assistant responses with context
+- Tool execution results
+- Error messages
+- System events
+
+Example:
 ```python
-from bedrock_swarm.memory.base import SimpleMemory
-
-# Create memory system
-memory = SimpleMemory(max_size=1000)
-
-# Add messages
-memory.add_message(message)
-
-# Get messages
-all_messages = memory.get_messages()
-thread_messages = memory.get_messages(thread_id="thread_123")
-last_message = memory.get_last_message()
+# Messages are automatically recorded during interactions
+response = agency.process_request("What time is it in Tokyo?")
 ```
 
-### 3. Shared State
+### Context Management
 
+The memory system maintains conversation context by:
+- Preserving recent message history
+- Including tool execution results
+- Tracking conversation threads
+- Managing metadata for context enrichment
+
+Example of context usage:
 ```python
-# Access shared state
-memory.shared_state.set("last_calculation", "105")
-value = memory.shared_state.get("last_calculation")
+# The agent can reference previous interactions
+User: "What is 15% of 85?"
+Assistant: "15% of 85 is 12.75"
 
-# Clear state
-memory.shared_state.clear()
+User: "Can you explain how you calculated that?"
+Assistant: "I calculated this by multiplying 85 by 0.15..."
 ```
 
-## Memory Usage Patterns
+### Thread Management
 
-### 1. Thread-Specific Memory
+Conversations can be organized into threads:
+- Each thread maintains its own message history
+- Threads can be cleared independently
+- Messages can be filtered by thread ID
+- Thread-specific size limits are enforced
 
+### Metadata Support
+
+Messages include rich metadata:
+- Message type (`user_message`, `assistant_response`, `tool_result`, etc.)
+- Timestamps
+- Thread IDs
+- Tool execution details
+- Custom metadata fields
+
+### Memory Cleanup
+
+The system automatically manages memory usage:
+- Enforces configurable size limits per thread
+- Removes oldest messages when limit is reached
+- Preserves most recent and relevant context
+- Supports manual thread clearing
+
+## Usage Examples
+
+### Basic Usage
 ```python
-# Create thread with memory
-thread = Thread(
-    agent=agent,
-    memory=SimpleMemory()
-)
+from bedrock_swarm.agency import Agency
+from bedrock_swarm.agents import BedrockAgent
 
-# Access thread memory
-history = thread.get_history()
-context = thread.get_context_window(n=5)
-```
-
-### 2. Shared Agency Memory
-
-```python
-# Create shared memory for agency
-shared_memory = SimpleMemory()
-
-# Create agency with shared memory
-agency = Agency(
-    specialists=[calculator, time_expert],
-    shared_memory=shared_memory
-)
-
-# Access shared memory
-all_messages = agency.get_memory().get_messages()
-```
-
-### 3. Memory-Aware Agents
-
-```python
-# Create agent with memory
+# Create an agent with default memory system
 agent = BedrockAgent(
+    name="assistant",
     model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-    memory=SimpleMemory(),
-    system_prompt="Use memory to maintain context"
+    role="Assistant"
 )
 
-# Agent can access its memory
-last_msg = agent.memory.get_last_message()
+# Agency automatically manages memory
+agency = Agency(agents={"assistant": agent})
+
+# Memory is handled automatically during interactions
+response = agency.process_request("Hello!")
+```
+
+### Accessing Memory
+```python
+# Get all messages
+messages = agent.memory.get_messages()
+
+# Get messages by type
+tool_results = agent.memory.get_messages_by_type("tool_result")
+
+# Get conversation summary
+summary = agent.memory.get_conversation_summary(limit=5)
+
+# Get thread-specific messages
+thread_messages = agent.memory.get_messages(thread_id="thread_123")
+```
+
+### Memory Configuration
+```python
+from bedrock_swarm.memory import SimpleMemory
+
+# Create memory with custom size limit
+memory = SimpleMemory(max_size=500)
+
+# Create agent with custom memory
+agent = BedrockAgent(
+    name="assistant",
+    model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    role="Assistant",
+    memory=memory
+)
 ```
 
 ## Best Practices
 
-### 1. Memory Organization
+1. **Memory Size**: Configure appropriate memory size limits based on your use case
+2. **Thread Management**: Use threads to organize distinct conversations
+3. **Metadata Usage**: Leverage metadata for enhanced context tracking
+4. **Regular Cleanup**: Clear unused threads to manage memory usage
+5. **Context Windows**: Use appropriate context window sizes in prompts
 
+## Implementation Details
+
+The memory system is deeply integrated with:
+- Thread management
+- Tool execution
+- Event system
+- Agent responses
+- Conversation context
+
+This integration ensures:
+- Automatic context preservation
+- Proper message recording
+- Efficient memory usage
+- Thread isolation
+- Metadata consistency
+
+## Advanced Features
+
+### Conversation Summary
+Get structured summaries of recent interactions:
 ```python
-# Good: Organized by thread
-memory.add_message(Message(
-    role="user",
-    content="Query about time",
-    thread_id="time_thread"
-))
-
-memory.add_message(Message(
-    role="user",
-    content="Query about math",
-    thread_id="math_thread"
-))
-
-# Bad: Mixed messages without thread IDs
-memory.add_message(Message(
-    role="user",
-    content="Mixed query"
-))
+summary = memory.get_conversation_summary(limit=5)
+# Returns recent user/assistant message pairs with metadata
 ```
 
-### 2. Metadata Usage
-
+### Tool Result Tracking
+Access tool execution history:
 ```python
-# Good: Rich metadata
-message = Message(
-    content="Calculate result",
-    metadata={
-        "timestamp": datetime.now().isoformat(),
-        "category": "calculation",
-        "priority": "high",
-        "related_thread": "math_123"
-    }
-)
-
-# Bad: Missing important context
-message = Message(
-    content="Calculate result"
-    # No metadata
-)
+tool_results = memory.get_tool_results(limit=10)
+# Returns recent tool execution results
 ```
 
-### 3. State Management
-
+### Thread Management
+Manage conversation threads:
 ```python
-# Good: Structured state
-memory.shared_state.set("calculation", {
-    "input": "15 * 7",
-    "result": "105",
-    "timestamp": datetime.now().isoformat()
-})
+# Clear specific thread
+memory.clear_thread("thread_123")
 
-# Bad: Unstructured state
-memory.shared_state.set("last_number", "105")
+# Get all thread IDs
+thread_ids = memory.get_thread_ids()
 ```
 
-## Advanced Usage
+## Conclusion
 
-### 1. Custom Memory Implementation
+The memory system is a core component that enables:
+- Natural conversation flow
+- Context-aware responses
+- Tool execution tracking
+- Efficient resource usage
+- Thread isolation
 
-```python
-from typing import List, Optional
-from bedrock_swarm.memory.base import BaseMemory, Message
-
-class PrioritizedMemory(BaseMemory):
-    def __init__(self) -> None:
-        self.high_priority: List[Message] = []
-        self.low_priority: List[Message] = []
-
-    def add_message(self, message: Message) -> None:
-        priority = message.metadata.get("priority", "low")
-        if priority == "high":
-            self.high_priority.append(message)
-        else:
-            self.low_priority.append(message)
-
-    def get_messages(
-        self,
-        thread_id: Optional[str] = None
-    ) -> List[Message]:
-        messages = self.high_priority + self.low_priority
-        if thread_id:
-            return [m for m in messages if m.thread_id == thread_id]
-        return messages
-```
-
-### 2. Memory Filtering
-
-```python
-class MemoryFilter:
-    def __init__(self, memory: SimpleMemory):
-        self.memory = memory
-
-    def get_by_category(self, category: str) -> List[Message]:
-        return [
-            msg for msg in self.memory.get_messages()
-            if msg.metadata.get("category") == category
-        ]
-
-    def get_by_timerange(
-        self,
-        start: datetime,
-        end: datetime
-    ) -> List[Message]:
-        return [
-            msg for msg in self.memory.get_messages()
-            if start <= msg.timestamp <= end
-        ]
-```
-
-### 3. Memory Analytics
-
-```python
-class MemoryAnalytics:
-    def __init__(self, memory: SimpleMemory):
-        self.memory = memory
-
-    def get_thread_stats(self) -> Dict[str, Dict]:
-        stats = {}
-        for msg in self.memory.get_messages():
-            thread_id = msg.thread_id or "default"
-            if thread_id not in stats:
-                stats[thread_id] = {
-                    "message_count": 0,
-                    "roles": set(),
-                    "first_message": msg.timestamp,
-                    "last_message": msg.timestamp
-                }
-
-            stats[thread_id]["message_count"] += 1
-            stats[thread_id]["roles"].add(msg.role)
-            stats[thread_id]["last_message"] = max(
-                stats[thread_id]["last_message"],
-                msg.timestamp
-            )
-
-        return stats
-```
-
-### 4. Memory Persistence
-
-```python
-import json
-from datetime import datetime
-
-class PersistentMemory(SimpleMemory):
-    def save_to_file(self, filename: str) -> None:
-        data = {
-            "messages": [
-                {
-                    "role": msg.role,
-                    "content": msg.content,
-                    "timestamp": msg.timestamp.isoformat(),
-                    "thread_id": msg.thread_id,
-                    "metadata": msg.metadata
-                }
-                for msg in self.get_messages()
-            ],
-            "shared_state": self.shared_state._data
-        }
-
-        with open(filename, 'w') as f:
-            json.dump(data, f)
-
-    @classmethod
-    def load_from_file(cls, filename: str) -> 'PersistentMemory':
-        memory = cls()
-
-        with open(filename, 'r') as f:
-            data = json.load(f)
-
-        # Restore messages
-        for msg_data in data["messages"]:
-            memory.add_message(Message(
-                role=msg_data["role"],
-                content=msg_data["content"],
-                timestamp=datetime.fromisoformat(
-                    msg_data["timestamp"]
-                ),
-                thread_id=msg_data["thread_id"],
-                metadata=msg_data["metadata"]
-            ))
-
-        # Restore shared state
-        memory.shared_state._data = data["shared_state"]
-
-        return memory
-```
+By automatically managing these aspects, it allows developers to focus on building agent capabilities while ensuring proper context management and memory organization.

@@ -135,7 +135,102 @@ class SimpleMemory(BaseMemory):
         messages = self.get_messages(thread_id)
         return messages[-1] if messages else None
 
+    def get_messages_by_type(
+        self, message_type: str, thread_id: Optional[str] = None
+    ) -> List[Message]:
+        """Get messages of a specific type from memory.
+
+        Args:
+            message_type: Type of messages to retrieve (e.g., 'tool_result', 'user_message')
+            thread_id: Optional thread ID to filter messages
+
+        Returns:
+            List of messages of the specified type in chronological order
+        """
+        messages = self.get_messages(thread_id)
+        return [
+            msg
+            for msg in messages
+            if msg.metadata and msg.metadata.get("type") == message_type
+        ]
+
+    def get_tool_results(
+        self, thread_id: Optional[str] = None, limit: Optional[int] = None
+    ) -> List[Message]:
+        """Get tool execution results from memory.
+
+        Args:
+            thread_id: Optional thread ID to filter messages
+            limit: Optional limit on number of results to return (most recent first)
+
+        Returns:
+            List of tool result messages in chronological order
+        """
+        tool_results = self.get_messages_by_type("tool_result", thread_id)
+        if limit:
+            return tool_results[-limit:]
+        return tool_results
+
+    def get_conversation_summary(
+        self, thread_id: Optional[str] = None, limit: int = 5
+    ) -> List[Dict[str, str]]:
+        """Get a summary of the recent conversation.
+
+        Args:
+            thread_id: Optional thread ID to filter messages
+            limit: Number of most recent message pairs to include
+
+        Returns:
+            List of message pairs (user/assistant) with their content
+        """
+        messages = self.get_messages(thread_id)
+        summary = []
+
+        # Process messages from newest to oldest, up to limit pairs
+        i = len(messages) - 1
+        while i >= 0 and len(summary) < limit:
+            msg = messages[i]
+
+            if msg.role == "user":
+                # Look ahead for assistant response
+                if i + 1 < len(messages) and messages[i + 1].role == "assistant":
+                    summary.insert(
+                        0,
+                        {
+                            "user": msg.content,
+                            "assistant": messages[i + 1].content,
+                            "has_tool_calls": bool(
+                                messages[i + 1].metadata
+                                and messages[i + 1].metadata.get("type")
+                                == "tool_call_intent"
+                            ),
+                        },
+                    )
+                else:
+                    # No assistant response found
+                    summary.insert(0, {"user": msg.content, "assistant": None})
+            i -= 1
+
+        return summary[-limit:]
+
     def clear(self) -> None:
         """Clear all messages from memory."""
         self._messages.clear()
         self.shared_state.clear()
+
+    def clear_thread(self, thread_id: str) -> None:
+        """Clear all messages from a specific thread.
+
+        Args:
+            thread_id: ID of the thread to clear
+        """
+        if thread_id in self._messages:
+            del self._messages[thread_id]
+
+    def get_thread_ids(self) -> List[str]:
+        """Get list of all thread IDs in memory.
+
+        Returns:
+            List of thread IDs
+        """
+        return list(self._messages.keys())

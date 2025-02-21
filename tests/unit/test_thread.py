@@ -436,3 +436,169 @@ def test_run_management(thread: Thread) -> None:
     run2.complete()
     assert thread.cancel_run(run2.id) is False
     assert run2.status == "completed"
+
+
+def test_message_recording(thread: Thread) -> None:
+    """Test comprehensive message recording."""
+    with patch.object(thread.agent, "generate") as mock_generate:
+        # Test recording user message
+        mock_generate.return_value = {"type": "message", "content": "Test response"}
+        thread.process_message("Test message")
+
+        # Verify user message was recorded
+        user_messages = [msg for msg in thread.history if msg.role == "user"]
+        assert len(user_messages) == 1
+        assert user_messages[0].content == "Test message"
+        assert user_messages[0].metadata["type"] == "user_message"
+
+        # Verify assistant response was recorded
+        assistant_messages = [msg for msg in thread.history if msg.role == "assistant"]
+        assert len(assistant_messages) == 1
+        assert assistant_messages[0].content == "Test response"
+        assert assistant_messages[0].metadata["type"] == "assistant_response"
+
+
+def test_tool_result_recording(thread: Thread) -> None:
+    """Test recording of tool execution results."""
+    # Mock tool call response
+    tool_call_response = {
+        "type": "tool_call",
+        "tool_calls": [
+            {
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "mock_tool",
+                    "arguments": {"param": "test"},
+                },
+            }
+        ],
+    }
+
+    # Mock final response
+    final_response = {"type": "message", "content": "Final response"}
+
+    with patch.object(thread.agent, "generate") as mock_generate:
+        mock_generate.side_effect = [tool_call_response, final_response]
+        thread.process_message("Test message")
+
+        # Verify tool call intent was recorded
+        tool_call_messages = [
+            msg
+            for msg in thread.history
+            if msg.metadata and msg.metadata.get("type") == "tool_call_intent"
+        ]
+        assert len(tool_call_messages) == 1
+        assert "call_1" in tool_call_messages[0].content
+
+        # Verify tool result was recorded
+        tool_result_messages = [
+            msg
+            for msg in thread.history
+            if msg.metadata and msg.metadata.get("type") == "tool_result"
+        ]
+        assert len(tool_result_messages) == 1
+        assert tool_result_messages[0].metadata["tool_call_id"] == "call_1"
+
+        # Verify final response was recorded
+        final_messages = [
+            msg
+            for msg in thread.history
+            if msg.metadata and msg.metadata.get("type") == "assistant_response"
+        ]
+        assert len(final_messages) == 1
+        assert final_messages[0].content == "Final response"
+
+
+def test_error_recording(thread: Thread) -> None:
+    """Test recording of error messages."""
+    with patch.object(thread.agent, "generate") as mock_generate:
+        # Simulate an error
+        mock_generate.side_effect = Exception("Test error")
+        response = thread.process_message("Test message")
+
+        # Verify error response
+        assert "Error processing message: Test error" in response
+
+        # Verify error was recorded
+        error_messages = [
+            msg
+            for msg in thread.history
+            if msg.metadata and msg.metadata.get("type") == "error"
+        ]
+        assert len(error_messages) == 1
+        assert "Test error" in error_messages[0].content
+        assert error_messages[0].metadata["run_id"] == thread.current_run.id
+
+
+def test_context_window_with_metadata(thread: Thread) -> None:
+    """Test context window retrieval with metadata."""
+    # Add messages with metadata
+    messages = [
+        Message(
+            role="user",
+            content=f"Message {i}",
+            timestamp=datetime.now(),
+            metadata={"type": "user_message", "index": i},
+        )
+        for i in range(6)
+    ]
+    thread.history.extend(messages)
+
+    # Test context window
+    context = thread.get_context_window(n=3)
+    assert len(context) == 3
+    assert [msg.metadata["index"] for msg in context] == [3, 4, 5]
+
+
+def test_message_metadata_persistence(thread: Thread) -> None:
+    """Test that metadata is properly persisted in message history."""
+    with patch.object(thread.agent, "generate") as mock_generate:
+        # Mock a tool call sequence
+        tool_call_response = {
+            "type": "tool_call",
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": "mock_tool",
+                        "arguments": {"param": "test"},
+                    },
+                }
+            ],
+        }
+        final_response = {"type": "message", "content": "Final response"}
+        mock_generate.side_effect = [tool_call_response, final_response]
+
+        # Process message
+        thread.process_message("Test message")
+
+        # Get all messages with their metadata
+        messages = thread.get_history()
+
+        # Verify user message metadata
+        user_msg = next(msg for msg in messages if msg.role == "user")
+        assert user_msg.metadata["type"] == "user_message"
+        assert user_msg.metadata["timestamp"] is not None
+        assert user_msg.metadata["thread_id"] == thread.id
+
+        # Verify tool call metadata
+        tool_msg = next(
+            msg
+            for msg in messages
+            if msg.metadata and msg.metadata.get("type") == "tool_result"
+        )
+        assert tool_msg.metadata["tool_call_id"] == "call_1"
+        assert tool_msg.metadata["timestamp"] is not None
+        assert tool_msg.metadata["thread_id"] == thread.id
+
+        # Verify final response metadata
+        final_msg = next(
+            msg
+            for msg in messages
+            if msg.metadata and msg.metadata.get("type") == "assistant_response"
+        )
+        assert final_msg.metadata["has_tool_calls"] is True
+        assert final_msg.metadata["run_id"] == thread.current_run.id
+        assert final_msg.metadata["timestamp"] is not None
